@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import './App.css'
+import Home from './components/Home.js' 
 
 const mockStatus = {
   VR: 'Свободно',
@@ -7,25 +9,7 @@ const mockStatus = {
   Бильярд: 'Свободно',
 };
 
-function Home() {
-  return (
-    <div>
-      <h2>Наши развлечения</h2>
-      <ul>
-        <li>🎮 VR-игры</li>
-        <li>🕹️ PlayStation</li>
-        <li>🎱 Бильярд</li>
-      </ul>
 
-      <h2>Занятость в реальном времени</h2>
-      <ul>
-        {Object.entries(mockStatus).map(([activity, status]) => (
-          <li key={activity}><strong>{activity}</strong>: {status}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
 function About() {
   return (
@@ -88,12 +72,12 @@ function App() {
   return (
     <Router>
       <div style={{ fontFamily: 'Arial' }}>
-        <header style={{ backgroundColor: '#111', color: '#fff', padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <header >
           <h1>Neon Oasis</h1>
           <nav>
-            <Link to="/" style={{ marginRight: 10, color: '#fff', textDecoration: 'none' }}>Главная</Link>
-            <Link to="/about" style={{ marginRight: 10, color: '#fff', textDecoration: 'none' }}>О нас</Link>
-            <Link to="/booking" style={{ color: '#fff', textDecoration: 'none' }}>Бронирование</Link>
+            <Link className='link' to="/" >Главная</Link>
+            <Link  className='link' to="/about" >О нас</Link>
+            <Link  className='link' to="/booking">Бронирование</Link>
           </nav>
         </header>
 

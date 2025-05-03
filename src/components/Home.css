@@ -1,0 +1,153 @@
+.home {
+    color: #fff;
+    font-family: 'Segoe UI', sans-serif;
+    text-align: center;
+    padding: 2rem;
+  }
+  
+  .navbar {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    color: #00f0ff;
+  }
+  
+  .navbar a {
+    text-decoration: none;
+    color: #00f0ff;
+    font-weight: bold;
+  }
+  
+  .logo-section {
+    margin-bottom: 2rem;
+  }
+  
+  .logo-circle {
+    width: 8rem;
+    height: 8rem;
+    border: 0.3rem solid #00f0ff;
+    border-radius: 50%;
+    margin: 0 auto;
+    font-size: 4rem;
+    line-height: 8rem;
+    color: #ff00ff;
+    animation: pulse-neon  4s infinite alternate;
+  }
+  
+  .brand-title {
+    font-size: 2.5rem;
+    color: #ff00ff;
+    margin-top: 1rem;
+  }
+  
+  .section-title {
+    font-size: 2rem;
+    color: #ff99ff;
+    margin: 2rem 0 3rem;
+  }
+  
+  .activity-grid {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  .activity-item {
+    animation: float 3s ease-in-out infinite,pulse-neon  4s infinite alternate;
+    border-radius: 1rem;
+    padding: 1rem;
+    width: 10rem;
+    background: #111;
+  }
+  
+  @keyframes float {
+    0% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-0.5em);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+  
+  .activity-item img {
+    width: 100%;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .status-list {
+    list-style: none;
+    padding: 0;
+    margin: 2rem auto;
+    max-width: 20rem;
+    text-align: left;
+    font-size: 1.2rem;
+    color: #fff;
+  }
+  
+  .status-list li {
+    display: flex;
+    justify-content: space-between;
+    margin: 0.5rem 0;
+    align-items: center;
+  }
+  
+  .status-dot {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  
+  .status-dot.free {
+    background-color: lime;
+  }
+  
+  .status-dot.busy {
+    background-color: red;
+  }
+  
+  .status-text {
+    margin-left: 0.5rem;
+  }
+  
+  .booking-btn {
+    background: transparent;
+    color: #00f0ff;
+    border: 0.2rem solid #ff00ff;
+    padding: 1rem 2rem;
+    border-radius: 2rem;
+    font-size: 1rem;
+    margin-top: 2rem;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .booking-btn:hover {
+    background-color: #ff00ff;
+    color: #000;
+  }
+  .glowing-border {
+    border: 0.2rem solid transparent;
+    border-radius: 1rem;
+    animation: pulse-neon  4s infinite alternate;
+  }
+  
+  @keyframes pulse-neon {
+    0% {
+      box-shadow: 0 0 10px #00fff7, 0 0 20px #00fff7;
+    }
+    50% {
+      box-shadow: 0 0 15px #ff00e0, 0 0 30px #ff00e0;
+    }
+    100% {
+      box-shadow: 0 0 10px #00ff6a, 0 0 20px #00ff6a;
+    }
+  }
+  
