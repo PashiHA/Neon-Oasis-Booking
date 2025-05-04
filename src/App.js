@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './App.css'
 import Home from './components/Home.js' 
+import Admin from './components/Admin';
+import logo from './img/logo.png'
 
 const mockStatus = {
   VR: 'Свободно',
@@ -69,11 +71,12 @@ function Booking() {
 }
 
 function App() {
+  
   return (
     <Router>
       <div style={{ fontFamily: 'Arial' }}>
         <header >
-          <h1>Neon Oasis</h1>
+          <img src={logo}/>
           <nav>
             <Link className='link' to="/" >Главная</Link>
             <Link  className='link' to="/about" >О нас</Link>
@@ -86,6 +89,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
             <Route path="/booking" element={<Booking />} />
+            <Route path="/admin" element={<Admin />} />
           </Routes>
         </main>
       </div>

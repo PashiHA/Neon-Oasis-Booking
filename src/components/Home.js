@@ -1,36 +1,50 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import './Home.css';
 import ps5 from '../img/ps5.png';
 import vr from '../img/vr.png';
 import billiard from '../img/billiard.png';
-import billiard_booking from '../img/billiard_booking.jpg'
-import vr_booking from '../img/vr_booking.jpg'
-import ps5_booking from '../img/ps5_booking.png'
+import { db } from '../firebase';
+import { ref, onValue } from 'firebase/database';
 
-
-const mockStatus = {
-  'VR-игры': 'Свободно',
-  'PlayStation': 'Занято',
-  'Бильярд': 'Свободно'
-};
-const status = {
-  billiard1: 'free',
-  billiard2: 'busy',
-  ps1: 'busy',
-  ps2: 'free',
-  vr1: 'free',
-  vr2: 'free',
-  vr3: 'busy',
-  vr4: 'free',
-  vr5: 'free',
-  vr6: 'busy',
-};
 function Home() {
+  const [status, setStatus] = useState({});
+
+  useEffect(() => {
+    const statusesRef = ref(db, 'statuses');
+    const unsubscribe = onValue(statusesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setStatus(data);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const renderBox = (key) => {
+    const item = status[key];
+    const itemStatus = item?.status || 'Свободно';
+    const until = item?.until || null;
+    const timeLeft = until ? Math.max(0, until - Date.now()) : 0;
+    const minutes = Math.floor(timeLeft / 60000);
+
+    return (
+      <div className={`box ${key}`} key={key}>
+        <div className='status'>
+          <h3>Статус:</h3>
+          <div className={`status-radius ${itemStatus === 'Занято' ? 'busy' : 'free'}`}></div>
+          {itemStatus === 'Занято' && until && (
+            <div className="time-left"> {minutes} мин</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="home">
-
       <div className="logo-section">
-        <div className="logo-circle ">🌴</div>
+        <div className="logo-circle">🌴</div>
         <h1 className="brand-title">NEON OASIS</h1>
       </div>
 
@@ -41,11 +55,11 @@ function Home() {
             <img src={vr} alt="VR" />
             <p>VR-игры</p>
           </div>
-          <div className="activity-item ">
+          <div className="activity-item">
             <img src={ps5} alt="PS" />
             <p>PlayStation</p>
           </div>
-          <div className="activity-item ">
+          <div className="activity-item">
             <img src={billiard} alt="Billiard" />
             <p>Бильярд</p>
           </div>
@@ -56,60 +70,16 @@ function Home() {
         <h2 className="section-title">ЗАНЯТОСТЬ В ПОМЕЩЕНИИ</h2>
         <div className="room-layout">
           <div className="billiard-zone">
-            <div className={`box  billiard1`}>
-            <div className='status'>
-                <h3>Статус:</h3>
-                <div className={`status-radius ${status.billiard1}`}></div>
-              </div>
-              </div>
-            <div className={`box ${status.billiard2} billiard2`}>
-            <div className='status'>
-                <h3>Статус:</h3>
-                <div className={`status-radius ${status.billiard2}`}></div>
-              </div>
-            </div>
+            {renderBox('billiard1')}
+            {renderBox('billiard2')}
           </div>
           <div className="vr-zone">
-            <div className={`box vr1 `}>
-              <div className='status'>
-                <h3>Статус:</h3>
-                <div className={`status-radius ${status.vr1}`}></div>
-              </div>
-              </div>
-            <div className={`box vr2 }`}>
-            <div className='status'>
-                <h3>Статус:</h3>
-                <div className={`status-radius ${status.vr2}`}></div>
-              </div>
-              </div>
-              <div className={`box vr3 `}>
-              <div className='status'>
-                <h3>Статус:</h3>
-                <div className={`status-radius ${status.vr3}`}></div>
-              </div>
-              </div>
-              <div className={`box vr4 `}>
-              <div className='status'>
-                <h3>Статус:</h3>
-                <div className={`status-radius ${status.vr4}`}></div>
-              </div>
-              </div>
-            </div>
-            <div className="ps-zone">
-            <div className={`box ps1`}>
-            <div className='status'>
-                <h3>Статус:</h3>
-                <div className={`status-radius ${status.ps1}`}></div>
-              </div>
-            </div>
-            <div className={`box  ps2`}>
-            <div className='status'>
-                <h3>Статус:</h3>
-                <div className={`status-radius ${status.ps2}`}></div>
-              </div>
-            </div>
+            {['vr1', 'vr2', 'vr3', 'vr4'].map(renderBox)}
           </div>
+          <div className="ps-zone">
+            {['ps1', 'ps2'].map(renderBox)}
           </div>
+        </div>
       </section>
 
       <button className="booking-btn">ОНЛАЙН-БРОНИРОВАНИЕ</button>
