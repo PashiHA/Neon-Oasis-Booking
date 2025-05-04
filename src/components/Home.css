@@ -141,13 +141,133 @@
   
   @keyframes pulse-neon {
     0% {
-      box-shadow: 0 0 10px #00fff7, 0 0 20px #00fff7;
+      box-shadow: 0 0 10px #00fff7, 0 0 10px #00fff7;
     }
     50% {
-      box-shadow: 0 0 15px #ff00e0, 0 0 30px #ff00e0;
+      box-shadow: 0 0 15px #ff00e0, 0 0 15px #ff00e0;
     }
     100% {
-      box-shadow: 0 0 10px #00ff6a, 0 0 20px #00ff6a;
+      box-shadow: 0 0 10px #00ff6a, 0 0 10px #00ff6a;
     }
   }
+  .layout-status{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  .room-layout {
+    height: 30rem;
+    width: 49rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 2rem;
+    font-size: 1rem;
+    position: relative;
+  }
+  
+  .billiard-zone, .vr-zone, .ps-zone {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 1rem;
+  }
+  
+  .box {
+    width: 15rem;
+    height: 10rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pulse-neon  10s infinite alternate;
+    border-radius: 0.5rem;
+    background-color: #222;
+    color: #fff;
+  }
+  
+  .free {
+    background-color: #00ff00;
+  }
+  
+  .busy {
+    background-color: #ff3300; 
+  }
+  .billiard1{
+    left: 4rem;
+    bottom: 1rem;
+    color:#ff3300;
+  }
+  .billiard1 , .billiard2{
+    width: 10rem;
+    height: 15rem;
+    position: absolute;
+    background-image: url(../img/billiard_booking.png);
+    background-size: cover;       
+    background-repeat: no-repeat;
+    background-position: center;  
+  }
+  .status{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .status h3{
+    color: #000000;
+  text-shadow: 0 0 5px #0ff, 0 0 10px #0ff, 0 0 15px #0ff;
+  font-weight: bold;
+  }
+  .status-radius{
+    margin-left: 0.5rem;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+  }
+
+  .billiard2{
+    bottom: 1rem;
+    left : 16rem;
+  }
+  .vr1,.vr2,.vr3,.vr4{
+    background-image: url(../img/vr_booking.png);
+    background-size: cover;       
+    background-repeat: no-repeat;
+    background-position: center;  
+    position: absolute;
+    width: 10rem;
+    height: 5.5rem;
+  }
+  .vr1{
+    top:1rem;
+  }
+  .vr2{
+    top:7.5rem;
+  }
+  .vr3{
+    top: 1rem;
+    left: 16rem;
+  }
+  .vr4{
+    top: 7.5rem;
+    left: 16rem;
+  }
+
+  .ps1, .ps2{
+    background-image: url('../img/ps5_booking.png');
+    background-size: cover;       
+    background-repeat: no-repeat;
+    background-position: center;  
+    position: absolute;
+    right: 4rem;
+    width: 12.5rem;
+    height: 12.5rem;
+  }
+  .ps2{
+    bottom: 2rem;
+  }
+  .ps1 > .status , .ps2 > .status{
+    margin-top: 6.5rem;
+  }
+
+  
   
