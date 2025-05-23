@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import './Admin.css';
 import axios from 'axios';
@@ -79,6 +78,7 @@ export default function Admin() {
       addLog(`Ошибка отправки в FHIR для ${key}: ${err.message}`);
     }
   };
+
   const confirmBooking = async () => {
     if (!selectedItem || duration < 0.5) return;
     const until = Date.now() + duration * 60 * 60 * 1000;

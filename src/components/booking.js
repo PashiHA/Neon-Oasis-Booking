@@ -25,10 +25,10 @@ function Booking() {
     e.preventDefault();
 
     emailjs.send(
-      'YOUR_SERVICE_ID',
-      'YOUR_TEMPLATE_ID',
+      'service_dgtdcrk',
+      'template_euajgwg',
       formData,
-      'YOUR_PUBLIC_KEY'
+      'Gns4g6KclreYiKik0'
     )
     .then(() => {
       setSuccess(true);
