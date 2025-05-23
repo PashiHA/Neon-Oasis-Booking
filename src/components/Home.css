@@ -269,6 +269,92 @@
   .ps1 > .status , .ps2 > .status{
     margin-top: 6.5rem;
   }
+  @media (max-width: 768px) {
+    html, body {
+      width: 100%;
+      overflow-x: hidden;
+    }
+  
+  
+  
+    .desktop-nav {
+      display: none;
+    }
+  
+    .hamburger {
+      display: flex;
+    }
+  
+    .link {
+      font-size: 1.2rem;
+      padding: 0.75rem 0;
+      display: block;
+      color: #ff00ff;
+      text-decoration: none;
+      border-bottom: 1px solid #333;
+    }
+  
+    main {
+      padding: 1rem;
+    }
+  
+    .home {
+      padding: 1rem;
+    }
+  
+    .status-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+  
+    .toggle-button {
+      width: 100%;
+      text-align: center;
+      margin-left: 0;
+    }
+  
+    .section-title {
+      font-size: 1.25rem;
+    }
+  
+    .activity-list li,
+    .status-list li {
+      font-size: 1rem;
+    }
+    .billiard1, .billiard2{
+      width: 8rem;
+    height: 11rem;
+    }
+    .room-layout {
+      width: 39rem;
+      
+    }
+    .vr1, .vr2, .vr3, .vr4 {
+      width: 8rem;
+    }
+    .ps1, .ps2 {
+      width: 9.5rem;
+    height: 9.5rem;
+    }
+  }
 
+  
+  /* Улучшения для очень маленьких экранов */
+  @media (max-width: 480px) {
+    .link {
+      font-size: 1rem;
+    }
+  
+    .toggle-button {
+      font-size: 0.9rem;
+      padding: 0.3rem 0.5rem;
+    }
+  
+    .section-title {
+      font-size: 1.1rem;
+    }
+  }
+  
   
   
