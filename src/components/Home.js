@@ -82,7 +82,6 @@ function Home() {
         </div>
       </section>
 
-      <button className="booking-btn">ОНЛАЙН-БРОНИРОВАНИЕ</button>
     </div>
   );
 }
