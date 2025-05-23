@@ -49,3 +49,10 @@
     font-weight: bold;
     text-align: center;
   }
+
+  @media(max-width: 768px) {
+    html, body {
+      height: 100%;
+    
+  }
+}
