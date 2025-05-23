@@ -273,17 +273,9 @@
     html, body {
       width: 100%;
       overflow-x: hidden;
+      font-size: 11px;
     }
   
-  
-  
-    .desktop-nav {
-      display: none;
-    }
-  
-    .hamburger {
-      display: flex;
-    }
   
     .link {
       font-size: 1.2rem;
@@ -335,17 +327,26 @@
     }
     .ps1, .ps2 {
       width: 9.5rem;
-    height: 9.5rem;
+      height: 9.5rem;
     }
   }
 
   
   /* Улучшения для очень маленьких экранов */
   @media (max-width: 480px) {
+    html, body {
+      font-size: 8px;
+    }
     .link {
       font-size: 1rem;
     }
+    .desktop-nav {
+      display: none;
+    }
   
+    .hamburger {
+      display: flex;
+    }
     .toggle-button {
       font-size: 0.9rem;
       padding: 0.3rem 0.5rem;
