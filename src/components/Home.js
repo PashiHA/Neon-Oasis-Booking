@@ -3,6 +3,7 @@ import './Home.css';
 import ps5 from '../img/ps5.png';
 import vr from '../img/vr.png';
 import billiard from '../img/billiard.png';
+import palma from '../img/palma.png'
 import { db } from '../firebase';
 import { ref, onValue } from 'firebase/database';
 
@@ -26,7 +27,15 @@ function Home() {
     const itemStatus = item?.status || 'Свободно';
     const until = item?.until || null;
     const timeLeft = until ? Math.max(0, until - Date.now()) : 0;
-    const minutes = Math.floor(timeLeft / 60000);
+    const totalMinutes = Math.floor(timeLeft / 60000);
+    let timeDisplay;
+    if (totalMinutes >= 60) {
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      timeDisplay = `${hours} ч ${minutes} мин`;
+    } else {
+      timeDisplay = `${totalMinutes} мин`;
+    }
 
     return (
       <div className={`box ${key}`} key={key}>
@@ -34,7 +43,7 @@ function Home() {
           <h3>Статус:</h3>
           <div className={`status-radius ${itemStatus === 'Занято' ? 'busy' : 'free'}`}></div>
           {itemStatus === 'Занято' && until && (
-            <div className="time-left"> {minutes} мин</div>
+            <div className="time-left"> {timeDisplay}</div>
           )}
         </div>
       </div>
@@ -44,7 +53,7 @@ function Home() {
   return (
     <div className="home">
       <div className="logo-section">
-        <div className="logo-circle">🌴</div>
+        <div className="logo-circle"><img src={palma}/></div>
         <h1 className="brand-title">NEON OASIS</h1>
       </div>
 
@@ -67,7 +76,7 @@ function Home() {
       </section>
 
       <section className="layout-status">
-        <h2 className="section-title">ЗАНЯТОСТЬ В ПОМЕЩЕНИИ</h2>
+        <h2 className="section-title">ЗАНЯТОСТЬ В ЗАВЕДЕНИИ</h2>
         <div className="room-layout">
           <div className="billiard-zone">
             {renderBox('billiard1')}

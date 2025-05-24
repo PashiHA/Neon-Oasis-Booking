@@ -166,7 +166,10 @@
     font-size: 1rem;
     position: relative;
   }
-  
+  .logo-circle > img{
+    width: 100%;
+    height: 100%;
+  }
   .billiard-zone, .vr-zone, .ps-zone {
     display: flex;
     flex-direction: column;
@@ -199,8 +202,8 @@
     color:#ff3300;
   }
   .billiard1 , .billiard2{
-    width: 10rem;
-    height: 15rem;
+        width: 10rem;
+        height: 15rem;
     position: absolute;
     background-image: url(../img/billiard_booking.png);
     background-size: cover;       
@@ -272,10 +275,23 @@
   @media (max-width: 768px) {
     html, body {
       width: 100%;
+      height: 900px;
       overflow-x: hidden;
       font-size: 11px;
     }
-  
+    .status{
+      flex-direction: column;
+
+    }
+    .ps1 > .status, .ps2 > .status {
+      margin-top: -0.5rem;
+  }
+  .status h3{
+    margin: 0;
+  }
+  .status h3, .time-left {
+    font-size: 1.5rem;
+  }
     .link {
       font-size: 1.2rem;
       padding: 0.75rem 0;
@@ -314,20 +330,48 @@
       font-size: 1rem;
     }
     .billiard1, .billiard2{
-      width: 8rem;
-    height: 11rem;
+      width: 10rem;
+      height: 15rem;
+      bottom: -5rem;
+    }
+    .billiard1 {
+      left: 2rem;
+    }
+    .billiard2{
+      left: 30rem;
     }
     .room-layout {
       width: 39rem;
       
     }
-    .vr1, .vr2, .vr3, .vr4 {
-      width: 8rem;
-    }
     .ps1, .ps2 {
-      width: 9.5rem;
-      height: 9.5rem;
+      width: 12.5rem;
+      height: 12.5rem;
+  }
+  .ps1{
+    right: 11.5rem;
+    bottom: -19rem;
+  }
+  .ps2 {
+    bottom: -4rem;
+    left: 15rem;
+}
+    .vr1, .vr2, .vr3, .vr4 {
+      width: 15rem;
+      height: 10rem;
     }
+    .vr1, .vr3{
+      top: -3rem
+  }
+  .vr2, .vr4 {
+    top: 8.5rem;
+ }
+ .vr4{
+  left: 23rem;
+ }
+  .vr3{
+    left: 23rem;
+  }
   }
 
   
