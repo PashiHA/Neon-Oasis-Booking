@@ -20,46 +20,61 @@ const FHIR_BASE = process.env.REACT_APP_FHIR_BASE_URL;
 export default function Admin() {
   const [statuses, setStatuses] = useState(initialStatuses);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [duration, setDuration] = useState(1);
+  const [hours, setHours] = useState(0);
+  const [minutes, setMinutes] = useState(30);
   const [logs, setLogs] = useState([]);
   const timersRef = useRef({});
 
+  // Загрузка статусов и установка таймеров на авто-сброс
   useEffect(() => {
     const statusesRef = ref(db, 'statuses');
     const unsubscribe = onValue(statusesRef, snapshot => {
       const data = snapshot.val() || {};
       const merged = { ...initialStatuses, ...data };
       setStatuses(merged);
-      const missingKeys = Object.keys(initialStatuses).filter(key => !(key in data));
-      if (missingKeys.length) {
-        const seedObj = {};
-        missingKeys.forEach(key => { seedObj[key] = initialStatuses[key]; });
-        update(statusesRef, seedObj);
+      // инициализация недостающих ключей
+      const missing = Object.keys(initialStatuses).filter(k => !(k in data));
+      if (missing.length) {
+        const seed = {};
+        missing.forEach(k => { seed[k] = initialStatuses[k]; });
+        update(statusesRef, seed);
       }
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      Object.values(timersRef.current).forEach(clearTimeout);
+    };
   }, []);
 
-  const addLog = entry => {
-    setLogs(prev => [...prev, `${new Date().toLocaleString()}: ${entry}`]);
-  };
+  useEffect(() => {
+    Object.entries(statuses).forEach(([key, { status, until }]) => {
+      if (status === 'Занято' && until) {
+        const timeLeft = until - Date.now();
+        if (timeLeft <= 0) {
+          resetStatus(key);
+        } else if (!timersRef.current[key]) {
+          timersRef.current[key] = setTimeout(() => {
+            resetStatus(key);
+            delete timersRef.current[key];
+          }, timeLeft);
+        }
+      }
+    });
+  }, [statuses]);
+
+  const addLog = entry => setLogs(prev => [...prev, `${new Date().toLocaleString()}: ${entry}`]);
 
   const downloadLog = () => {
-    const content = logs.join('\n');
-    const blob = new Blob([content], { type: 'text/plain' });
+    const blob = new Blob([logs.join('\n')], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'bookings-log.txt';
-    a.click();
+    const a = document.createElement('a'); a.href = url;
+    a.download = 'bookings-log.txt'; a.click();
     URL.revokeObjectURL(url);
   };
 
   const sendToFhir = async (key, { status, until }) => {
     const resource = {
-      resourceType: 'Observation',
-      status: 'final',
-      code: { text: key },
+      resourceType: 'Observation', status: 'final', code: { text: key },
       effectiveDateTime: new Date().toISOString(),
       component: [
         { code: { text: 'status' }, valueString: status },
@@ -67,118 +82,75 @@ export default function Admin() {
       ]
     };
     try {
-      await axios.post(
-        `${FHIR_BASE}/Observation`,
-        resource,
-        { headers: { 'Content-Type': 'application/fhir+json' } }
-      );
-      addLog(`Отправлено в FHIR: ${key} -> ${status} до ${until ? new Date(until).toLocaleTimeString() : 'null'}`);
-    } catch (err) {
-      console.error('Ошибка при отправке в FHIR:', err);
-      addLog(`Ошибка отправки в FHIR для ${key}: ${err.message}`);
+      await axios.post(`${FHIR_BASE}/Observation`, resource, { headers: { 'Content-Type': 'application/fhir+json' } });
+      addLog(`FHIR: ${key} -> ${status}${until? ` до ${new Date(until).toLocaleTimeString()}` : ''}`);
+    } catch (e) {
+      console.error(e);
+      addLog(`FHIR error ${key}: ${e.message}`);
+    }
+  };
+
+  const resetStatus = async key => {
+    const free = { status: 'Свободно', until: null };
+    const statusesRef = ref(db, 'statuses');
+    try {
+      await update(statusesRef, { [key]: free });
+      setStatuses(prev => ({ ...prev, [key]: free }));
+      addLog(`Авто-сброс ${key}`);
+      await sendToFhir(key, free);
+    } catch (e) {
+      console.error(e);
+      addLog(`Reset error ${key}: ${e.message}`);
     }
   };
 
   const confirmBooking = async () => {
-    if (!selectedItem || duration < 0.5) return;
-    const until = Date.now() + duration * 60 * 60 * 1000;
+    if (!selectedItem) return;
+    const totalMs = hours * 3600000 + minutes * 60000;
+    if (totalMs <= 0) return;
+    const until = Date.now() + totalMs;
     const newStatus = { status: 'Занято', until };
     const statusesRef = ref(db, 'statuses');
-
     try {
       await update(statusesRef, { [selectedItem]: newStatus });
-      setStatuses(prev => ({ ...prev, [selectedItem]: newStatus }));
-      addLog(`Забронировано ${selectedItem} до ${new Date(until).toLocaleTimeString()}`);
+      addLog(`Забронировано ${selectedItem} на ${hours} ч ${minutes} мин`);
       await sendToFhir(selectedItem, newStatus);
-
-      const timeoutId = setTimeout(async () => {
-        const freeStatus = { status: 'Свободно', until: null };
-        await update(statusesRef, { [selectedItem]: freeStatus });
-        setStatuses(prev => ({ ...prev, [selectedItem]: freeStatus }));
-        addLog(`Авто-сброс ${selectedItem}`);
-        await sendToFhir(selectedItem, freeStatus);
-        delete timersRef.current[selectedItem];
-      }, duration * 60 * 60 * 1000);
-      timersRef.current[selectedItem] = timeoutId;
-
       setSelectedItem(null);
-      setDuration(1);
-    } catch (error) {
-      console.error('Ошибка установки статуса:', error);
-      addLog(`Ошибка бронирования ${selectedItem}: ${error.message}`);
+      setHours(0); setMinutes(30);
+    } catch (e) {
+      console.error(e);
+      addLog(`Booking error ${selectedItem}: ${e.message}`);
     }
   };
 
   const resetBooking = async () => {
-    const key = selectedItem;
-    if (!key) return;
-    clearTimeout(timersRef.current[key]);
-    delete timersRef.current[key];
-
-    const freeStatus = { status: 'Свободно', until: null };
-    const statusesRef = ref(db, 'statuses');
-
-    try {
-      await update(statusesRef, { [key]: freeStatus });
-      setStatuses(prev => ({ ...prev, [key]: freeStatus }));
-      addLog(`Сброшено ${key}`);
-      await sendToFhir(key, freeStatus);
-    } catch (err) {
-      console.error('Ошибка сброса брони:', err);
-      addLog(`Ошибка сброса ${key}: ${err.message}`);
-    } finally {
-      setSelectedItem(null);
-      setDuration(1);
-    }
+    if (!selectedItem) return;
+    clearTimeout(timersRef.current[selectedItem]);
+    delete timersRef.current[selectedItem];
+    await resetStatus(selectedItem);
+    setSelectedItem(null);
+    setHours(0); setMinutes(30);
   };
 
   return (
     <div className="admin-panel">
-      <button className="download-log" onClick={downloadLog} disabled={logs.length === 0}>
-        Скачать лог бронирований
-      </button>
-
+      <button onClick={downloadLog} disabled={!logs.length}>Скачать лог</button>
       {Object.entries(statuses).map(([key, val]) => (
-        <div
-          key={key}
-          className={`admin-box ${val.status === 'Занято' ? 'busy' : 'free'}`}
-          onClick={() => setSelectedItem(key)}
-        >
+        <div key={key} className={`admin-box ${val.status==='Занято'? 'busy':'free'}`} onClick={()=>setSelectedItem(key)}>
           <strong>{key.toUpperCase()}</strong>
-          <div>
-            {val.status}
-            {val.until && (
-              <small> до {new Date(val.until).toLocaleTimeString()}</small>
-            )}
-          </div>
+          <div>{val.status}{val.until && <small> до {new Date(val.until).toLocaleTimeString()}</small>}</div>
         </div>
       ))}
-
       {selectedItem && (
         <div className="popup">
-          {statuses[selectedItem].status === 'Занято' ? (
-            <>
-              <h3>{selectedItem.toUpperCase()} занят до {new Date(statuses[selectedItem].until).toLocaleTimeString()}</h3>
-              <button onClick={resetBooking}>Сбросить бронирование</button>
-              <button onClick={() => setSelectedItem(null)}>Закрыть</button>
-            </>
+          {statuses[selectedItem].status==='Занято' ? (
+            <><h3>{selectedItem.toUpperCase()} занят до {new Date(statuses[selectedItem].until).toLocaleTimeString()}</h3>
+            <button onClick={resetBooking}>Сбросить</button><button onClick={()=>setSelectedItem(null)}>Закрыть</button></>
           ) : (
-            <>
-              <h3>Забронировать {selectedItem.toUpperCase()}</h3>
-              <label>
-                Длительность (часы, шаг 0.5):
-                <input
-                  type="number"
-                  value={duration}
-                  onChange={e => setDuration(Number(e.target.value))}
-                  min={0.5}
-                  max={12}
-                  step={0.5}
-                />
-              </label>
-              <button onClick={confirmBooking}>Подтвердить</button>
-              <button onClick={() => setSelectedItem(null)}>Отмена</button>
-            </>
+            <><h3>Забронировать {selectedItem.toUpperCase()}</h3>
+            <label>Часы: <input type="number" value={hours} onChange={e=>setHours(Number(e.target.value))} min={0} max={12} /></label>
+            <label>Минуты: <input type="number" value={minutes} onChange={e=>setMinutes(Number(e.target.value))} min={0} max={59} step={15} /></label>
+            <button onClick={confirmBooking}>Подтвердить</button><button onClick={()=>setSelectedItem(null)}>Отмена</button></>
           )}
         </div>
       )}
