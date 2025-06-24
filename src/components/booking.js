@@ -1,60 +1,93 @@
-
-import React, { useState } from 'react';
-import emailjs from 'emailjs-com';
+import React, { useState, useEffect } from 'react';
+import { db } from '../firebase';
+import { ref, push, onValue } from 'firebase/database';
 import './booking.css';
 
 function Booking() {
   const today = new Date().toISOString().split('T')[0];
-
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
     phone: '',
     service: '',
     date: today,
-    time: '',
+    time: ''
   });
-
   const [success, setSuccess] = useState(false);
+  const [bookingsList, setBookingsList] = useState([]);
 
-  const handleChange = (e) => {
+  // subscribe to bookings
+  useEffect(() => {
+    const bookingsRef = ref(db, 'bookings');
+    return onValue(bookingsRef, snapshot => {
+      const data = snapshot.val() || {};
+      const list = Object.entries(data).map(([id, entry]) => entry);
+      setBookingsList(list);
+    });
+  }, []);
+
+  // generate timeslots from 12:00 to 24:00 by 30min
+  const generateTimes = () => {
+    const slots = [];
+    let hour = 12;
+    let minute = 0;
+    while (hour < 24) {
+      const h = String(hour).padStart(2, '0');
+      const m = String(minute).padStart(2, '0');
+      slots.push(`${h}:${m}`);
+      minute += 30;
+      if (minute === 60) { minute = 0; hour += 1; }
+    }
+    return slots;
+  };
+
+  // count existing bookings per slot
+  const countForSlot = (service, date, time) => {
+    return bookingsList.filter(b =>
+      b.service === service && b.date === date && b.time === time
+    ).length;
+  };
+
+  const capacity = {
+    VR: 4,
+    PS5: 2,
+    Billiard: 2
+  };
+
+  const handleChange = e => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const sendEmail = (e) => {
+  const sendBooking = async e => {
     e.preventDefault();
-
-    emailjs.send(
-      'service_dgtdcrk',
-      'template_euajgwg',
-      formData,
-      'Gns4g6KclreYiKik0'
-    )
-    .then(() => {
+    try {
+      await push(ref(db, 'bookings'), {
+        ...formData,
+        timestamp: Date.now()
+      });
       setSuccess(true);
-      setFormData({ name: '', email: '', phone: '', service: '', date: today, time: '' });
-    })
-    .catch((error) => {
-      console.error('Ошибка отправки:', error);
-    });
+      setFormData({ name: '', phone: '', service: '', date: today, time: '' });
+    } catch (error) {
+      console.error('Ошибка сохранения бронирования:', error);
+    }
   };
+
+  const timeslots = generateTimes();
 
   return (
     <div className="booking-form-container">
-      <form onSubmit={sendEmail} className="booking-form">
+      <form onSubmit={sendBooking} className="booking-form">
         <h2>Забронировать</h2>
+
         <label>
           Имя:
           <input type="text" name="name" value={formData.name} onChange={handleChange} required />
         </label>
-        <label>
-          Email:
-          <input type="email" name="email" value={formData.email} onChange={handleChange} required />
-        </label>
+
         <label>
           Телефон:
           <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required />
         </label>
+
         <label>
           Развлечение:
           <select name="service" value={formData.service} onChange={handleChange} required>
@@ -64,15 +97,30 @@ function Booking() {
             <option value="Billiard">Бильярд</option>
           </select>
         </label>
+
         <label>
           Дата брони:
           <input type="date" name="date" value={formData.date} onChange={handleChange} required />
         </label>
+
         <label>
           Время:
-          <input type="time" name="time" value={formData.time} onChange={handleChange} required />
+          <select name="time" value={formData.time} onChange={handleChange} required>
+            <option value="">Выбери</option>
+            {timeslots.map(ts => {
+              const count = countForSlot(formData.service, formData.date, ts);
+              const max = capacity[formData.service] || 1;
+              const disabled = !formData.service || count >= max;
+              return (
+                <option key={ts} value={ts} disabled={disabled}>
+                  {ts} {disabled ? ' (недоступно)' : ''}
+                </option>
+              );
+            })}
+          </select>
         </label>
-        <button type="submit">Отправить</button>
+
+        <button type="submit" disabled={!formData.time}>Отправить</button>
         {success && <div className="success">Бронирование отправлено!</div>}
       </form>
     </div>

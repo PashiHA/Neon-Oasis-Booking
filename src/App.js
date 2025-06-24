@@ -1,10 +1,42 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+// src/App.js
+import React, { useState, useEffect } from 'react';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Link,
+  useNavigate,
+  useLocation,
+  Navigate
+} from 'react-router-dom';
 import './App.css';
-import Home from './components/Home.js';
+import Home from './components/Home';
 import Admin from './components/Admin';
-import Booking from './components/booking.js';
+import Booking from './components/booking';
 import logo from './img/logo.png';
+
+const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD;
+
+function ProtectedAdmin() {
+  const [authorized, setAuthorized] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Prompt only once per session
+    if (!authorized) {
+      const pwd = window.prompt('Введите пароль для доступа в админ-панель:');
+      if (pwd === ADMIN_PASSWORD) {
+        setAuthorized(true);
+      } else {
+        alert('Неверный пароль');
+        navigate('/', { replace: true });
+      }
+    }
+  }, [authorized, navigate, location]);
+
+  return authorized ? <Admin /> : null;
+}
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -14,7 +46,7 @@ function App() {
       <div style={{ fontFamily: 'Arial' }}>
         <header>
           <img src={logo} alt="Logo" />
-          
+
           {/* Гамбургер-кнопка */}
           <div className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
             <span></span>
@@ -39,7 +71,8 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/booking" element={<Booking />} />
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin" element={<ProtectedAdmin />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>

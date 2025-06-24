@@ -74,3 +74,59 @@
   .popup button:last-child {
     background-color: #555;
   }
+  .stats-display {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stats-display p {
+    background: #0022ff;
+    padding: 1.2rem;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    flex: 1;
+    text-align: center;
+    font-size: 14px;
+  }
+  .booking{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .booking-name{
+    border-radius: 35%;
+    width: 16.5rem;
+    height: 2rem;
+    background-color: #ff0055;
+    padding: 1.2rem;
+    font-weight: 700;
+    font-size: 1.5rem;
+  }
+  .booking-list{
+    display: flex;
+    flex-direction: column;
+  }
+  .booking-item{
+    padding: 0.3rem;
+    font-size: 1.2rem;
+    background-color: #00a6ffc7;
+    margin-bottom: 0.5rem;
+  }
+  .admin-plates{
+    width: 32rem;
+    display: grid;
+    /* подбираем количество колонок по ширине: от 120px до равного распределения */
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem; /* отступы между ячейками */
+    padding: 1rem;
+  }
+  .delete-btn {
+    margin-left: 1rem;
+    background: #F44336;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
