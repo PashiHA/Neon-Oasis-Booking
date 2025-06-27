@@ -14,6 +14,7 @@ import Home from './components/Home';
 import Admin from './components/Admin';
 import Booking from './components/booking';
 import logo from './img/logo.png';
+import { FaInstagram, FaTiktok, FaMapMarkerAlt } from 'react-icons/fa';
 
 const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD;
 
@@ -75,8 +76,26 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+        <footer>
+          <img src={logo}/>
+          <div className="footer-media">
+            <a href="https://www.instagram.com/_neon_oasis_?igsh=MWJyczZ0Ynd0YXUzcQ==" target="_blank" rel="noopener noreferrer" className="media-link">
+              <FaInstagram className="icon neon" />
+              <span className="media-label">Наш Instagram</span>
+            </a>
+            <a href="https://www.tiktok.com/@_neon_oasis_?_t=ZM-8xYVqXTaDzk&_r=1" target="_blank" rel="noopener noreferrer" className="media-link">
+              <FaTiktok className="icon neon" />
+              <span className="media-label">Наш TikTok</span>
+            </a>
+            <a href="https://maps.app.goo.gl/Y3tEmM1bNQzSNhpR6" target="_blank" rel="noopener noreferrer" className="media-link">
+              <FaMapMarkerAlt className="icon neon" />
+              <span className="media-label">Геолокация</span>
+            </a>
+          </div>
+        </footer>
       </div>
     </Router>
+
   );
 }
 

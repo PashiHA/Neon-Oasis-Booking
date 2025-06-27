@@ -137,7 +137,7 @@ export default function Admin() {
       runTransaction(statRef, cur => (cur || 0) + totalMs);
       setSelectedItem(null);
       setHours(0);
-      setMinutes(30);
+      setMinutes(0);
     } catch (e) {
       console.error(e);
       addLog(`Booking error ${selectedItem}: ${e.message}`);
@@ -153,7 +153,7 @@ export default function Admin() {
       addLog(`Сброс брони ${selectedItem}`);
       setSelectedItem(null);
       setHours(0);
-      setMinutes(30);
+      setMinutes(0);
     } catch (e) {
       console.error(e);
       addLog(`Reset error ${selectedItem}: ${e.message}`);
@@ -174,7 +174,7 @@ export default function Admin() {
       <ul className="booking-list">
         {bookingsList.map(b => (
           <li key={b.id} className="booking-item">
-            <span><strong>{b.name}</strong> — {b.service} на {b.date} в {b.time} Телефон {b.phone}</span>
+            <span><strong>{b.name}</strong> — {b.service} на {b.date} в {b.time} к-во мест: {b.quantity} Телефон {b.phone}</span>
             <button className="delete-btn" onClick={() => deleteBooking(b.id)}>Удалить</button>
           </li>
         ))}
