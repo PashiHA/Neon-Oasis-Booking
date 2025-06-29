@@ -123,7 +123,7 @@ function Booking() {
 
         {formData.service && (
           <label>
-            Количество:
+            Количество игровых мест:
             <select
               name="quantity"
               value={formData.quantity}
