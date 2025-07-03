@@ -1,0 +1,195 @@
+:root {
+    --neon-blue: #00ffff;
+    --neon-pink: #ff00ff;
+    --neon-purple: #aa00ff;
+    --bg-dark: #0d0d0d;
+    --text-light: #e6e6e6;
+  }
+  
+  .catalog {
+    background-color: var(--bg-dark);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+  
+  .header {
+    text-align: center;
+  }
+  .header h2 {
+    font-size: 3rem;
+    color: var(--neon-pink);
+    text-shadow: 0 0 8px var(--neon-pink), 0 0 16px var(--neon-pink);
+    margin-bottom: 2rem;
+  }
+  .filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .filterButton {
+    background: transparent;
+    border: 2px solid var(--neon-purple);
+    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    color: var(--text-light);
+    font-weight: bold;
+    cursor: pointer;
+    text-shadow: 0 0 4px var(--neon-purple);
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .filterButton:hover {
+    box-shadow: 0 0 8px var(--neon-purple);
+  }
+  .filterButton.active {
+    background: var(--neon-purple);
+    color: var(--bg-dark);
+    box-shadow: 0 0 12px var(--neon-purple), inset 0 0 6px var(--neon-purple);
+  }
+  .list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 1200px;
+  }
+  
+  .card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--neon-blue);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 12px var(--neon-blue), inset 0 0 6px var(--neon-blue);
+    transition: transform 0.3s;
+  }
+  .card:hover {
+    transform: translateY(-5px);
+  }
+  
+  .imageWrapper {
+    width: 100%;
+    height: 160px;
+    overflow: hidden;
+    border-bottom: 2px solid var(--neon-purple);
+  }
+  .image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+  }
+  .image:hover {
+    transform: scale(1.05);
+  }
+  
+  
+  .info {
+    padding: 1rem;
+    color: var(--text-light);
+  }
+  
+  .title {
+    font-size: 1.5rem;
+    color: var(--neon-blue);
+    text-shadow: 0 0 6px var(--neon-blue);
+    margin-bottom: 0.5rem;
+  }
+  
+  .description {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .trailerLink {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--neon-pink);
+    border-radius: 8px;
+    color: var(--neon-pink);
+    font-weight: bold;
+    text-decoration: none;
+    text-shadow: 0 0 4px var(--neon-pink);
+    box-shadow: 0 0 8px var(--neon-pink);
+    transition: background 0.3s;
+  }
+  .trailerLink:hover {
+    background: var(--neon-pink);
+    color: var(--bg-dark);
+    text-shadow: none;
+  }
+
+  @media (max-width: 1024px) {
+    .header h2 {
+      font-size: 2.5rem;
+    }
+    .list {
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+    .card {
+      box-shadow: 0 0 10px var(--neon-blue);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .header h2 {
+      font-size: 2rem;
+    }
+    .filters {
+      gap: 0.5rem;
+    }
+    .filterButton {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.9rem;
+    }
+    .list {
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .title {
+      font-size: 1.3rem;
+    }
+    .description {
+      font-size: 0.9rem;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .catalog {
+      padding: 1rem;
+    }
+    .header h2 {
+      font-size: 1.5rem;
+    }
+    .filters {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .filterButton {
+      width: 100%;
+    }
+    .list {
+      grid-template-columns: 1fr;
+      gap: 0.8rem;
+    }
+    .card {
+      margin-bottom: 1rem;
+      transform: none;
+    }
+    .imagePlaceholder {
+      height: 120px;
+    }
+    .title {
+      font-size: 1.2rem;
+    }
+    .description {
+      font-size: 0.85rem;
+    }
+    .trailerLink {
+      font-size: 0.9rem;
+      padding: 0.4rem 0.8rem;
+    }
+  }
+  
+  

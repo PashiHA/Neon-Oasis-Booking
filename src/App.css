@@ -27,7 +27,7 @@ header img {
 .desktop-nav {
   display: flex;
   justify-content: space-around;
-  width: 25rem;
+  width: 30rem;
 }
 
 .link {

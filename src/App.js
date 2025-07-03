@@ -13,6 +13,7 @@ import './App.css';
 import Home from './components/Home';
 import Admin from './components/Admin';
 import Booking from './components/booking';
+import VRGamesCatalog from './components/VRGamesCatalog';
 import logo from './img/logo.png';
 import { FaInstagram, FaTiktok, FaMapMarkerAlt } from 'react-icons/fa';
 
@@ -59,12 +60,14 @@ function App() {
           <nav className={`mobile-nav ${menuOpen ? 'active' : ''}`}>
             <Link className="link" to="/" onClick={() => setMenuOpen(false)}>Главная</Link>
             <Link className="link" to="/booking" onClick={() => setMenuOpen(false)}>Бронирование</Link>
+            <Link className="link" to="/VRGamesCatalog">VR игры</Link>
           </nav>
 
           {/* Десктопное меню — скрыто на мобилках */}
           <nav className="desktop-nav">
             <Link className="link" to="/">Главная</Link>
             <Link className="link" to="/booking">Бронирование</Link>
+            <Link className="link" to="/VRGamesCatalog">VR игры</Link>
           </nav>
         </header>
 
@@ -73,6 +76,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/booking" element={<Booking />} />
             <Route path="/admin" element={<ProtectedAdmin />} />
+            <Route path='/VRGamesCatalog' element={<VRGamesCatalog />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
