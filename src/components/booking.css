@@ -57,6 +57,42 @@
     background-color: #10585c;
     padding: 0.5rem;
 }
+  
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+  margin: 1rem 0;
+}
+.calendar-cell {
+  background: #1f1f1f;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 8px;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.calendar-cell.free {
+  border-color: #0f0;
+  box-shadow: 0 0 4px #0f0;
+}
+.calendar-cell.full {
+  border-color: #f00;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.time-label {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+.free-count {
+  font-size: 0.9rem;
+  color: #ff0000;
+  font-weight: 700;
+}
 
   @media(max-width: 768px) {
 
