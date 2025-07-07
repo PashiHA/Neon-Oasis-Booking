@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import './Admin.css';
 import { db } from '../firebase';
-import { ref, update, onValue, runTransaction, remove, onChildAdded } from 'firebase/database';
+import { ref, update, onValue, runTransaction, remove, onChildAdded, push } from 'firebase/database';
 
 const initialStatuses = {
   vr1: { status: 'Свободно', until: null },
@@ -32,8 +32,30 @@ export default function Admin() {
   const [logs, setLogs] = useState([]);
   const timersRef = useRef({});
 
-  // Add entry to history log
-  const addLog = entry => setLogs(prev => [...prev, `${new Date().toLocaleString()}: ${entry}`]);
+  const todayKey = getTodayKey();
+  const logsRefPath = `logs/${todayKey}`;
+
+  // Write entry to Firebase log
+  const addLog = entry => {
+    const logRef = ref(db, logsRefPath);
+    push(logRef, {
+      timestamp: Date.now(),
+      entry
+    });
+  };
+
+  // Subscribe to logs for today
+  useEffect(() => {
+    const logRef = ref(db, logsRefPath);
+    const unsub = onValue(logRef, snap => {
+      const data = snap.val() || {};
+      const list = Object.values(data)
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .map(item => `${new Date(item.timestamp).toLocaleString()}: ${item.entry}`);
+      setLogs(list);
+    });
+    return () => unsub();
+  }, [logsRefPath]);
 
   // 1) Load statuses and set auto-reset timers per item
   useEffect(() => {
@@ -42,10 +64,8 @@ export default function Admin() {
       const data = snap.val() || {};
       const merged = { ...initialStatuses, ...data };
       setStatuses(merged);
-      // clear existing timers
       Object.values(timersRef.current).forEach(clearTimeout);
       timersRef.current = {};
-      // schedule per-item reset
       Object.entries(merged).forEach(([key, { status, until }]) => {
         if (status === 'Занято' && until) {
           const timeLeft = until - Date.now();
@@ -68,14 +88,13 @@ export default function Admin() {
 
   // 2) Load today's aggregated stats
   useEffect(() => {
-    const todayKey = getTodayKey();
     const statsRef = ref(db, `dailyStats/${todayKey}`);
     const unsub = onValue(statsRef, snap => {
       const data = snap.val() || {};
       setDailyStats({ vr: 0, ps: 0, billiard: 0, ...data });
     });
     return () => unsub();
-  }, []);
+  }, [todayKey]);
 
   // 3) Subscribe to bookings list and log new additions
   useEffect(() => {
@@ -99,13 +118,13 @@ export default function Admin() {
     const free = { status: 'Свободно', until: null };
     try {
       await update(ref(db, 'statuses'), { [key]: free });
+      addLog(`Автовосстановление ${key} — статус «Свободно»`);
     } catch (e) {
       console.error(e);
     }
   };
 
   const downloadLog = () => {
-    const todayKey = getTodayKey();
     const format = ms => `${Math.floor(ms/3600000)} ч ${Math.floor((ms%3600000)/60000)} мин`;
     const historyHeader = ['=== История бронирований ==='];
     const summaryHeader = ['', '=== Итоги за день ===', `Дата: ${todayKey}`, `VR: ${format(dailyStats.vr)}`, `PlayStation: ${format(dailyStats.ps)}`, `Бильярд: ${format(dailyStats.billiard)}`];
@@ -120,7 +139,13 @@ export default function Admin() {
   };
 
   const deleteBooking = async id => {
-    await remove(ref(db, `bookings/${id}`));
+    try {
+      await remove(ref(db, `bookings/${id}`));
+      addLog(`Удалено бронирование ID=${id}`);
+    } catch (e) {
+      console.error(e);
+      addLog(`Ошибка удаления брони ID=${id}: ${e.message}`);
+    }
   };
 
   const confirmBooking = async () => {
@@ -130,9 +155,8 @@ export default function Admin() {
     const until = Date.now() + totalMs;
     try {
       await update(ref(db, 'statuses'), { [selectedItem]: { status: 'Занято', until } });
-      addLog(`Забронировано ${selectedItem} на ${hours} ч ${minutes} мин`);
+      addLog(`Бронирование ${selectedItem}: ${hours} ч ${minutes} мин`);
       const cat = selectedItem.startsWith('vr') ? 'vr' : selectedItem.startsWith('ps') ? 'ps' : 'billiard';
-      const todayKey = getTodayKey();
       const statRef = ref(db, `dailyStats/${todayKey}/${cat}`);
       runTransaction(statRef, cur => (cur || 0) + totalMs);
       setSelectedItem(null);
@@ -140,7 +164,7 @@ export default function Admin() {
       setMinutes(0);
     } catch (e) {
       console.error(e);
-      addLog(`Booking error ${selectedItem}: ${e.message}`);
+      addLog(`Ошибка бронирования ${selectedItem}: ${e.message}`);
     }
   };
 
@@ -156,7 +180,7 @@ export default function Admin() {
       setMinutes(0);
     } catch (e) {
       console.error(e);
-      addLog(`Reset error ${selectedItem}: ${e.message}`);
+      addLog(`Ошибка сброса брони ${selectedItem}: ${e.message}`);
     }
   };
 
