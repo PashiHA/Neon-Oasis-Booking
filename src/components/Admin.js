@@ -108,7 +108,7 @@ export default function Admin() {
     const todayKey = getTodayKey();
     const format = ms => `${Math.floor(ms/3600000)} ч ${Math.floor((ms%3600000)/60000)} мин`;
     const historyHeader = ['=== История бронирований ==='];
-    const summaryHeader = ['','=== Итоги за день ===', `Дата: ${todayKey}`, `VR: ${format(dailyStats.vr)}`, `PlayStation: ${format(dailyStats.ps)}`, `Бильярд: ${format(dailyStats.billiard)}`];
+    const summaryHeader = ['', '=== Итоги за день ===', `Дата: ${todayKey}`, `VR: ${format(dailyStats.vr)}`, `PlayStation: ${format(dailyStats.ps)}`, `Бильярд: ${format(dailyStats.billiard)}`];
     const allLines = [...historyHeader, ...logs, ...summaryHeader];
     const blob = new Blob([allLines.join('\n')], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
