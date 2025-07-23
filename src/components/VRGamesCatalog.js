@@ -26,7 +26,7 @@ const games = [
           description: ' FINAL FURY — VR-файтинг, который меняет представление о выходе на ринг. Сразитесь с самыми свирепыми бойцами галактики — офлайн или по всему миру.',
           trailerUrl: 'https://www.meta.com/en-gb/experiences/final-fury/5218982198148896/',
           ageCategories: ['Дети','Подростки','Взрослые'],
-          imageUrl: 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fstore.steampowered.com%2Fapp%2F1782760%2FFINAL_FURY%2F&psig=AOvVaw0-wQm7sBZ8djjbiP7WCXa1&ust=1753355066251000&source=images&cd=vfe&opi=89978449&ved=0CBUQjRxqFwoTCKDD8PPq0o4DFQAAAAAdAAAAABAK',
+          imageUrl: 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1782760/415a64132c2b37ab37b86b06babb461f037471f0/capsule_616x353.jpg?t=1750196515',
         },
       {
         title: 'Hunt Together',
