@@ -1,7 +1,17 @@
+// src/components/Admin.js
 import React, { useEffect, useState, useRef } from 'react';
 import './Admin.css';
 import { db } from '../firebase';
-import { ref, update, onValue, runTransaction, remove, onChildAdded, push } from 'firebase/database';
+import {
+  ref,
+  update,
+  onValue,
+  runTransaction,
+  remove,
+  onChildAdded,
+  onChildChanged,
+  push
+} from 'firebase/database';
 
 const initialStatuses = {
   vr1: { status: 'Свободно', until: null },
@@ -57,32 +67,53 @@ export default function Admin() {
     return () => unsub();
   }, [logsRefPath]);
 
-  // 1) Load statuses and set auto-reset timers per item
+  // 1) Load statuses for display, and separately manage per-key timers
   useEffect(() => {
     const statusesRef = ref(db, 'statuses');
-    const unsub = onValue(statusesRef, snap => {
+
+    // Initial load of all statuses
+    const unsubValue = onValue(statusesRef, snap => {
       const data = snap.val() || {};
       const merged = { ...initialStatuses, ...data };
       setStatuses(merged);
+    });
+
+    // Handler for each child added/changed
+    const handleStatusChange = snap => {
+      const key = snap.key;
+      const data = snap.val() || {};
+      const { status, until } = { ...initialStatuses[key], ...data };
+
+      // Clear previous timer for this key
+      if (timersRef.current[key]) {
+        clearTimeout(timersRef.current[key]);
+        delete timersRef.current[key];
+      }
+
+      // If now occupied — schedule reset
+      if (status === 'Занято' && until) {
+        const timeLeft = until - Date.now();
+        if (timeLeft <= 0) {
+          // already expired
+          resetStatus(key);
+        } else {
+          timersRef.current[key] = setTimeout(() => {
+            resetStatus(key);
+            delete timersRef.current[key];
+          }, timeLeft);
+        }
+      }
+    };
+
+    const unsubAdded = onChildAdded(statusesRef, handleStatusChange);
+    const unsubChanged = onChildChanged(statusesRef, handleStatusChange);
+
+    return () => {
+      unsubValue();
+      unsubAdded();
+      unsubChanged();
       Object.values(timersRef.current).forEach(clearTimeout);
       timersRef.current = {};
-      Object.entries(merged).forEach(([key, { status, until }]) => {
-        if (status === 'Занято' && until) {
-          const timeLeft = until - Date.now();
-          if (timeLeft <= 0) {
-            resetStatus(key);
-          } else {
-            timersRef.current[key] = setTimeout(() => {
-              resetStatus(key);
-              delete timersRef.current[key];
-            }, timeLeft);
-          }
-        }
-      });
-    });
-    return () => {
-      unsub();
-      Object.values(timersRef.current).forEach(clearTimeout);
     };
   }, []);
 
@@ -99,6 +130,7 @@ export default function Admin() {
   // 3) Subscribe to bookings list and log new additions
   useEffect(() => {
     const bookingsRef = ref(db, 'bookings');
+
     const unsubList = onValue(bookingsRef, snap => {
       const data = snap.val() || {};
       const list = Object.entries(data).map(([id, entry]) => ({ id, ...entry }));
@@ -108,6 +140,7 @@ export default function Admin() {
       const b = snap.val();
       addLog(`Новое бронирование: ${b.name}, ${b.service}, ${b.date} в ${b.time}`);
     });
+
     return () => {
       unsubList();
       unsubChild();
@@ -125,9 +158,16 @@ export default function Admin() {
   };
 
   const downloadLog = () => {
-    const format = ms => `${Math.floor(ms/3600000)} ч ${Math.floor((ms%3600000)/60000)} мин`;
+    const format = ms => `${Math.floor(ms / 3600000)} ч ${Math.floor((ms % 3600000) / 60000)} мин`;
     const historyHeader = ['=== История бронирований ==='];
-    const summaryHeader = ['', '=== Итоги за день ===', `Дата: ${todayKey}`, `VR: ${format(dailyStats.vr)}`, `PlayStation: ${format(dailyStats.ps)}`, `Бильярд: ${format(dailyStats.billiard)}`];
+    const summaryHeader = [
+      '',
+      '=== Итоги за день ===',
+      `Дата: ${todayKey}`,
+      `VR: ${format(dailyStats.vr)}`,
+      `PlayStation: ${format(dailyStats.ps)}`,
+      `Бильярд: ${format(dailyStats.billiard)}`
+    ];
     const allLines = [...historyHeader, ...logs, ...summaryHeader];
     const blob = new Blob([allLines.join('\n')], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -156,7 +196,11 @@ export default function Admin() {
     try {
       await update(ref(db, 'statuses'), { [selectedItem]: { status: 'Занято', until } });
       addLog(`Бронирование ${selectedItem}: ${hours} ч ${minutes} мин`);
-      const cat = selectedItem.startsWith('vr') ? 'vr' : selectedItem.startsWith('ps') ? 'ps' : 'billiard';
+      const cat = selectedItem.startsWith('vr')
+        ? 'vr'
+        : selectedItem.startsWith('ps')
+        ? 'ps'
+        : 'billiard';
       const statRef = ref(db, `dailyStats/${todayKey}/${cat}`);
       runTransaction(statRef, cur => (cur || 0) + totalMs);
       setSelectedItem(null);
@@ -188,47 +232,94 @@ export default function Admin() {
     <div className="admin-panel">
       <button onClick={downloadLog}>Скачать статистику</button>
       <div className="stats-display">
-        <p>Дата: {getTodayKey()}</p>
-        <p>VR: {`${Math.floor(dailyStats.vr/3600000)} ч ${Math.floor((dailyStats.vr%3600000)/60000)} мин`}</p>
-        <p>PlayStation: {`${Math.floor(dailyStats.ps/3600000)} ч ${Math.floor((dailyStats.ps%3600000)/60000)} мин`}</p>
-        <p>Бильярд: {`${Math.floor(dailyStats.billiard/3600000)} ч ${Math.floor((dailyStats.billiard%3600000)/60000)} мин`}</p>
+        <p>Дата: {todayKey}</p>
+        <p>
+          VR: {`${Math.floor(dailyStats.vr / 3600000)} ч ${Math.floor(
+            (dailyStats.vr % 3600000) / 60000
+          )} мин`}
+        </p>
+        <p>
+          PlayStation: {`${Math.floor(dailyStats.ps / 3600000)} ч ${Math.floor(
+            (dailyStats.ps % 3600000) / 60000
+          )} мин`}
+        </p>
+        <p>
+          Бильярд: {`${Math.floor(dailyStats.billiard / 3600000)} ч ${Math.floor(
+            (dailyStats.billiard % 3600000) / 60000
+          )} мин`}
+        </p>
       </div>
-    <div className='booking'>
-      <h3 className='booking-name'>Новые бронирования</h3>
-      <ul className="booking-list">
-        {bookingsList.map(b => (
-          <li key={b.id} className="booking-item">
-            <span><strong>{b.name}</strong> — {b.service} на {b.date} в {b.time} к-во мест: {b.quantity} Телефон {b.phone}</span>
-            <button className="delete-btn" onClick={() => deleteBooking(b.id)}>Удалить</button>
-          </li>
-        ))}
-      </ul>
+
+      <div className="booking">
+        <h3 className="booking-name">Новые бронирования</h3>
+        <ul className="booking-list">
+          {bookingsList.map(b => (
+            <li key={b.id} className="booking-item">
+              <span>
+                <strong>{b.name}</strong> — {b.service} на {b.date} в {b.time} к-во мест:{' '}
+                {b.quantity} Телефон {b.phone}
+              </span>
+              <button className="delete-btn" onClick={() => deleteBooking(b.id)}>
+                Удалить
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className="admin-plates">
         {Object.entries(statuses).map(([key, val]) => (
-          <div key={key} className={`admin-box ${val.status==='Занято'? 'busy':'free'}`} onClick={()=>setSelectedItem(key)}>
+          <div
+            key={key}
+            className={`admin-box ${val.status === 'Занято' ? 'busy' : 'free'}`}
+            onClick={() => setSelectedItem(key)}
+          >
             <strong>{key.toUpperCase()}</strong>
-            <div>{val.status}{val.until && <small> до {new Date(val.until).toLocaleTimeString()}</small>}</div>
+            <div>
+              {val.status}
+              {val.until && <small> до {new Date(val.until).toLocaleTimeString()}</small>}
+            </div>
           </div>
         ))}
       </div>
 
       {selectedItem && (
         <div className="popup">
-          {statuses[selectedItem].status==='Занято' ? (
+          {statuses[selectedItem].status === 'Занято' ? (
             <>
-              <h3>{selectedItem.toUpperCase()} занят до {new Date(statuses[selectedItem].until).toLocaleTimeString()}</h3>
+              <h3>
+                {selectedItem.toUpperCase()} занят до{' '}
+                {new Date(statuses[selectedItem].until).toLocaleTimeString()}
+              </h3>
               <button onClick={resetBooking}>Сбросить</button>
-              <button onClick={()=>setSelectedItem(null)}>Закрыть</button>
+              <button onClick={() => setSelectedItem(null)}>Закрыть</button>
             </>
           ) : (
             <>
               <h3>Забронировать {selectedItem.toUpperCase()}</h3>
-              <label>Часы: <input type="number" value={hours} onChange={e=>setHours(Number(e.target.value))} min={0} max={12} /></label>
-              <label>Минуты: <input type="number" value={minutes} onChange={e=>setMinutes(Number(e.target.value))} min={0} max={59} step={15} /></label>
+              <label>
+                Часы:{' '}
+                <input
+                  type="number"
+                  value={hours}
+                  onChange={e => setHours(Number(e.target.value))}
+                  min={0}
+                  max={12}
+                />
+              </label>
+              <label>
+                Минуты:{' '}
+                <input
+                  type="number"
+                  value={minutes}
+                  onChange={e => setMinutes(Number(e.target.value))}
+                  min={0}
+                  max={59}
+                  step={15}
+                />
+              </label>
               <button onClick={confirmBooking}>Подтвердить</button>
-              <button onClick={()=>setSelectedItem(null)}>Отмена</button>
+              <button onClick={() => setSelectedItem(null)}>Отмена</button>
             </>
           )}
         </div>
