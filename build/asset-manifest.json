@@ -1,0 +1,22 @@
+{
+  "files": {
+    "main.css": "/static/css/main.492514d4.css",
+    "main.js": "/static/js/main.9dcf4870.js",
+    "static/media/billiard_booking.png": "/static/media/billiard_booking.7172ee9d840b7ce622e7.png",
+    "static/media/vr_booking.png": "/static/media/vr_booking.8169942e5bdd4d90553d.png",
+    "static/media/ps5_booking.png": "/static/media/ps5_booking.d98623eda1cf2a556953.png",
+    "static/media/billiard.png": "/static/media/billiard.e04b5a9eef16f30e4961.png",
+    "static/media/vr.png": "/static/media/vr.a16bf8857c140e78008d.png",
+    "static/media/ps5.png": "/static/media/ps5.6be9272bd407c5553b25.png",
+    "static/media/baground.png": "/static/media/baground.68a25391cc7b1ead22dd.png",
+    "static/media/palma.png": "/static/media/palma.92da45a7a312272b2c94.png",
+    "static/media/logo.png": "/static/media/logo.4cfc8b01534944feb0d7.png",
+    "index.html": "/index.html",
+    "main.492514d4.css.map": "/static/css/main.492514d4.css.map",
+    "main.9dcf4870.js.map": "/static/js/main.9dcf4870.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.492514d4.css",
+    "static/js/main.9dcf4870.js"
+  ]
+}
