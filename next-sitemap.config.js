@@ -1,5 +1,5 @@
 /** @type {import('next-sitemap').IConfig} */
 module.exports = {
-    siteUrl: 'https://neonoasis.games',
+    siteUrl: 'https://www.neonoasis.games',
     generateRobotsTxt: true,
   }
