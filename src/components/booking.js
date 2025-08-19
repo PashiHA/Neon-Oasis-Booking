@@ -91,8 +91,11 @@ export default function Booking() {
             const isFull = free <= 0;
             return (
               <button
+                type="button"
                 key={ts}
-                className={`calendar-cell ${isFull ? 'full' : 'free'}`}
+                className={`calendar-cell 
+                  ${isFull ? 'full' : 'free'} 
+                  ${formData.time === ts ? 'selected' : ''}`}
                 disabled={isFull}
                 onClick={() => setFormData(f => ({ ...f, time: ts }))}
               >
@@ -119,10 +122,6 @@ export default function Booking() {
             <option value="Billiard">Бильярд</option>
           </select>
         </label>
-        <label>Дата брони:<input type="date" name="date" value={formData.date} onChange={handleChange} required /></label>
-
-        {renderCalendar()}
-
         <label>Кол-во мест:
           <select name="quantity" value={formData.quantity} onChange={handleChange} required>
             {Array.from({ length: capacity[formData.service] || 1 }, (_, i) => i + 1).map(q => (
@@ -130,6 +129,10 @@ export default function Booking() {
             ))}
           </select>
         </label>
+        <label>Дата брони:<input type="date" name="date" value={formData.date} onChange={handleChange} required /></label>
+
+        {renderCalendar()}
+
 
         <button type="submit" disabled={!formData.time}>Отправить</button>
         {success && <div className="success">Бронирование отправлено!</div>}

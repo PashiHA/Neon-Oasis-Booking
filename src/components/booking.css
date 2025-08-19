@@ -84,6 +84,12 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+.calendar-cell.selected {
+  border: 0.2rem solid #00ffcc;  /* неоновая рамка */
+  background-color: #222;     /* фон */
+  color: #00ffcc;             /* текст */
+  font-weight: bold;
+}
 .time-label {
   font-weight: bold;
   margin-bottom: 4px;
