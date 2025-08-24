@@ -1,0 +1,387 @@
+/* =====================  NEON CALENDAR (CalendarBookings)  ===================== */
+/* Базовые токены темы */
+:root {
+    --neon-cyan: #00eaff;
+    --neon-cyan-2: #00d1ff;
+    --neon-magenta: #ff00e6;
+    --neon-magenta-2: #ff4df2;
+  
+    --glass-weak: rgba(6, 10, 22, 0.55);
+    --glass-strong: rgba(6, 10, 22, 0.75);
+  
+    --white-06: rgba(255,255,255,.06);
+    --white-10: rgba(255,255,255,.10);
+    --white-15: rgba(255,255,255,.15);
+  
+    --r-sm: .6rem;
+    --r-md: .9rem;
+    --gap-sm: .5rem;
+    --gap-md: .75rem;
+    --gap-lg: 1rem;
+  
+    --shadow-cyan: 0 0 .5rem rgba(0, 234, 255, .28), 0 0 1.1rem rgba(0, 234, 255, .18);
+    --shadow-magenta: 0 0 .5rem rgba(255, 0, 230, .28), 0 0 1.1rem rgba(255, 0, 230, .18);
+  }
+  
+  /* ===== Обёртка календаря ===== */
+  .calendar-wrap {
+    margin: 1rem 0 1.5rem;
+    padding: 1rem;
+    border-radius: var(--r-md);
+    background:
+      radial-gradient(120% 140% at 0% 0%, rgba(0,234,255,.08) 0%, rgba(255,0,230,.05) 40%, rgba(0,0,0,.55) 100%),
+      var(--glass-weak);
+    border: .0625rem solid var(--white-10);
+    box-shadow: 0 0 .75rem rgba(0,0,0,.35), var(--shadow-cyan);
+    backdrop-filter: blur(.6rem);
+    color: #e7ecff;
+  }
+  
+  /* ===== Заголовок блока ===== */
+  .calendar-wrap > h3 {
+    margin: 0 0 .75rem;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: .015em;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 .35rem rgba(0,234,255,.45);
+  }
+  
+  /* ===== Хедер недели (кнопки и дата) ===== */
+  .calendar-left .calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--gap-sm);
+    margin-bottom: .5rem;
+  }
+  
+  .calendar-left .calendar-header button {
+    padding: .35rem .6rem;
+    border-radius: var(--r-sm);
+    border: .0625rem solid rgba(0,234,255,.35);
+    background: linear-gradient(180deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.03) 100%);
+    color: #dff8ff;
+    cursor: pointer;
+    box-shadow: var(--shadow-cyan);
+    transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+  }
+  .calendar-left .calendar-header button:hover:not(:disabled) {
+    transform: translateY(-.02rem);
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 .6rem rgba(0,234,255,.35), 0 0 1.1rem rgba(0,234,255,.25);
+  }
+  .calendar-left .calendar-header button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  
+  .cal-month-title {
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: .02em;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 .35rem rgba(0,234,255,.45);
+  }
+  
+  /* ===== Сетка дней недели ===== */
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: .375rem;
+  }
+  
+  .cal-cell {
+    position: relative;
+    min-height: 3.7rem;
+    padding: .6rem .55rem;
+    text-align: left;
+    border-radius: var(--r-sm);
+    border: .0625rem solid var(--white-06);
+    background: linear-gradient(180deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,.025) 100%);
+    color: #e6eaff;
+    box-shadow: inset 0 0 .5rem rgba(255,255,255,.03);
+    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease, transform .12s ease;
+    cursor: pointer;
+  }
+  .cal-cell:hover {
+    border-color: rgba(0,234,255,.35);
+    background: linear-gradient(180deg, rgba(0,234,255,.07) 0%, rgba(255,255,255,.03) 100%);
+    box-shadow: var(--shadow-cyan);
+  }
+  .cal-cell.selected {
+    border-color: rgba(255,0,230,.55);
+    background: linear-gradient(180deg, rgba(255,0,230,.12) 0%, rgba(0,234,255,.07) 100%);
+    box-shadow: 0 0 .9rem rgba(255,0,230,.3), 0 0 1.1rem rgba(0,234,255,.25);
+  }
+  
+  .cal-daynum {
+    font-size: .95rem;
+    font-weight: 800;
+    color: #f2f6ff;
+    text-shadow: 0 0 .25rem rgba(0,0,0,.5);
+  }
+  
+  .cal-badge {
+    position: absolute;
+    right: .1rem;
+    top: .2rem;
+    min-width: 1.2rem;
+    height: 1.2rem;
+    padding: 0 .375rem;
+    border-radius: 999px;
+    border: .0625rem solid rgba(255,255,255,.2);
+    background: linear-gradient(180deg, var(--neon-cyan) 0%, var(--neon-cyan-2) 100%);
+    color: #00222a;
+    font-size: .75rem;
+    font-weight: 800;
+    line-height: 1.2rem;
+    text-align: center;
+    box-shadow: 0 0 .7rem rgba(0,234,255,.5), 0 0 1rem rgba(0,234,255,.35);
+  }
+  
+  /* ===== Заголовок выбранного дня ===== */
+  .selected-day-title {
+    margin: .8rem 0 .5rem;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: .01em;
+    color: #f0f4ff;
+    text-shadow: 0 0 .3rem rgba(0,0,0,.35);
+    opacity: .95;
+  }
+  
+  /* ===== Мини-сетка слотов времени ===== */
+  .slot-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(5rem, 1fr));
+    gap: .5rem;
+  }
+  
+  /* Кнопка-слот */
+  .slot-mini {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .375rem;
+    padding: .5rem .6rem;
+    border-radius: var(--r-sm);
+    border: .0625rem solid var(--white-06);
+    background: rgba(255,255,255,.04);
+    color: #dfe6ff;
+    box-shadow: inset 0 0 .4rem rgba(255,255,255,.03);
+    cursor: pointer;
+    transition: transform .12s ease, border-color .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+  .slot-mini:hover:not(:disabled) {
+    transform: translateY(-.02rem);
+    border-color: rgba(0,234,255,.4);
+    box-shadow: 0 0 .6rem rgba(0,234,255,.28);
+  }
+  .slot-mini:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    filter: grayscale(.2);
+  }
+  .slot-mini.active {
+    border-color: rgba(255,0,230,.55);
+    background: linear-gradient(180deg, rgba(255,0,230,.13) 0%, rgba(0,234,255,.08) 100%);
+    box-shadow: 0 0 .9rem rgba(255,0,230,.32), 0 0 1.1rem rgba(0,234,255,.25);
+  }
+  
+  /* Время внутри слота */
+  .slot-mini-time {
+    font-weight: 800;
+    font-size: .9rem;
+    color: #f2f6ff;
+    text-shadow: 0 0 .25rem rgba(0,0,0,.4);
+  }
+  
+  /* Бейдж количества в слоте */
+  .slot-mini-badge {
+    min-width: 1.2rem;
+    height: 1.2rem;
+    padding: 0 .375rem;
+    border-radius: 999px;
+    border: .0625rem solid rgba(255,255,255,.2);
+    background: linear-gradient(180deg, var(--neon-magenta) 0%, var(--neon-magenta-2) 100%);
+    color: #180017;
+    font-size: .75rem;
+    font-weight: 900;
+    line-height: 1.2rem;
+    text-align: center;
+    box-shadow: 0 0 .7rem rgba(255,0,230,.45), 0 0 1rem rgba(255,0,230,.35);
+  }
+  
+  /* ===== Панель подробностей ниже ===== */
+  .slot-details-panel {
+    margin-top: .9rem;
+    padding-top: .75rem;
+    border-top: .0625rem solid var(--white-06);
+  }
+  
+  .details-title {
+    margin: 0 0 .5rem;
+    font-weight: 700;
+    font-size: 1rem;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 .35rem rgba(0,234,255,.45);
+  }
+  
+  .details-list {
+    display: grid;
+    gap: .6rem;
+  }
+  
+  /* Карточка брони */
+  .booking-chip {
+    border-radius: var(--r-sm);
+    border: .0625rem solid rgba(0,234,255,.35);
+    background: rgba(255,255,255,.05);
+    color: #ecf2ff;
+    box-shadow: inset 0 0 .7rem rgba(0,234,255,.08), 0 0 .75rem rgba(0,234,255,.18);
+    padding: .6rem .75rem;
+  }
+  
+  .chip-line {
+    font-size: 1.15rem;
+    line-height: 1.25rem;
+  }
+  
+  .chip-delete {
+    margin-top: .35rem;
+    padding: .25rem .55rem;
+    border-radius: 999px;
+    border: .0625rem solid rgba(255, 72, 116, .8);
+    background: rgba(255, 72, 116, .15);
+    color: #ffdbe7;
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+    box-shadow: 0 0 .6rem rgba(255,72,116,.35);
+  }
+  .chip-delete:hover {
+    transform: translateY(-.02rem);
+    background: rgba(255, 72, 116, .22);
+    box-shadow: 0 0 .8rem rgba(255,72,116,.45);
+  }
+  
+  /* =====================  Responsive  ===================== */
+  /* ≤ 64rem (~1024px) — планшет */
+  @media (max-width: 64rem) {
+    .slot-mini-grid {
+      grid-template-columns: repeat(6, minmax(4.75rem, 1fr));
+      gap: .5rem;
+    }
+  }
+  
+  /* ≤ 48rem (~768px) — маленький планшет/большой телефон */
+  @media (max-width: 48rem) {
+    .calendar-grid {
+      gap: .3rem;
+    }
+    .cal-cell {
+      min-height: 2.8rem;
+      padding: .5rem;
+    }
+    .slot-mini-grid {
+      grid-template-columns: repeat(5, minmax(4.5rem, 1fr));
+      gap: .45rem;
+    }
+  }
+  
+  /* ≤ 30rem (~480px) — телефон */
+  @media (max-width: 30rem) {
+    .calendar-wrap {
+      padding: .85rem;
+    }
+    .calendar-left .calendar-header button {
+      padding: .3rem .5rem;
+    }
+    .cal-month-title {
+      font-size: .95rem;
+    }
+    .calendar-grid {
+      gap: .25rem;
+    }
+    .cal-daynum {
+      font-size: .9rem;
+    }
+    .cal-badge {
+      right: .4rem;
+      top: .4rem;
+      min-width: 1.05rem;
+      height: 1.05rem;
+      font-size: .7rem;
+      line-height: 1.05rem;
+    }
+  
+    .slot-mini-grid {
+      grid-template-columns: repeat(4, minmax(4.25rem, 1fr));
+      gap: .4rem;
+    }
+    .slot-mini {
+      padding: .45rem .5rem;
+    }
+    .slot-mini-time {
+      font-size: .85rem;
+    }
+  }
+  .slot-unread-dot {
+    position: absolute;
+    top: 0.2rem;
+    right: 0.2rem;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background: #ff2b2b;
+  }
+  .slot-mini {
+    position: relative; /* чтобы точка позиционировалась внутри */
+  }
+  
+  /* ===== красная точка у дня (новые брони) ===== */
+.cal-unread-dot {
+    position: absolute;
+    z-index: 2;
+    top: .35rem;
+    right: .35rem;
+    width: .7rem;
+    height: .7rem;
+    border-radius: 999px;
+    border: .075rem solid rgba(255,255,255,.45);
+    background: radial-gradient(circle at 45% 40%, #ff6699 0%, #ff3366 45%, #ff0033 75%, #c0002a 100%);
+    box-shadow: 0 0 .55rem rgba(255, 51, 102, .75), 0 0 1rem rgba(255, 51, 102, .45);
+  }
+  
+  /* ===== красная точка на стрелках (есть непрочитанные вне недели) ===== */
+  .nav-btn {
+    position: relative;
+  }
+  .nav-dot {
+    position: absolute;
+    top: -.25rem;
+    right: -.25rem; /* для prev будет логичнее left, если хочешь — продублируй класс */
+    width: .7rem;
+    height: .7rem;
+    border-radius: 999px;
+    border: .075rem solid rgba(255,255,255,.45);
+    background: radial-gradient(circle at 45% 40%, #ff6699 0%, #ff3366 45%, #ff0033 75%, #c0002a 100%);
+    box-shadow: 0 0 .6rem rgba(255, 51, 102, .8), 0 0 1.05rem rgba(255, 51, 102, .5);
+  }
+  
+  /* если хочешь для prev точку с левой стороны */
+  .nav-prev .nav-dot { left: -.25rem; right: auto; }
+  
+  

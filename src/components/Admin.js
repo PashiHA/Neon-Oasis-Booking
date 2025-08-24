@@ -11,6 +11,7 @@ import {
   push,
   serverTimestamp
 } from 'firebase/database';
+import CalendarBookings from './CalendarBookings';
 
 // -------------------- Helpers --------------------
 const INITIAL_STATUSES = {
@@ -401,8 +402,8 @@ export default function Admin() {
   // -------------------- Render --------------------
   return (
     <div className="admin-panel">
-      <button onClick={downloadLog}>Скачать статистику</button>
-
+      <button className='button-log' onClick={downloadLog}>Скачать статистику</button>
+      <div className="row row-top">
       <div className="stats-display">
         <p>Дата: {todayKey}</p>
         <p>
@@ -417,23 +418,13 @@ export default function Admin() {
         <p>Выручка (напитки): {Number(dailyStats.revenueMDL || 0).toFixed(2)} MDL</p>
       </div>
 
-      {/* Бронирования */}
-      <div className="booking">
-        <h3 className="booking-name">Новые бронирования</h3>
-        <ul className="booking-list">
-          {bookingsList.map((b) => (
-            <li key={b.id} className="booking-item">
-              <span>
-                <strong>{b.name}</strong> — {b.service} на {b.date} в {b.time} к-во мест: {b.quantity} Телефон {b.phone}
-              </span>
-              <button className="delete-btn" onClick={() => deleteBooking(b.id)}>
-                Удалить
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-
+{/* Календарь бронирований */}
+    <CalendarBookings
+      bookingsList={bookingsList}
+      onDelete={deleteBooking}
+    />
+    </div>
+     <div className="row row-bottom">
       {/* Плитки статусов */}
       <div className="admin-plates">
         {Object.entries(statuses).map(([key, val]) => (
@@ -553,14 +544,14 @@ export default function Admin() {
                       <span className="drink-price">{d.price} MDL</span>
                       <span className="drink-stock">На складе: {stock}</span>
                       <div className="qty-controls" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => decCart(setSaleCart)(sku, 1)}>-</button>
+                        <button className='qty-controls-button' onClick={() => decCart(setSaleCart)(sku, 1)}>-</button>
                         <input
                           type="number"
                           min={0}
                           value={qty}
                           onChange={(e) => setCartQty(setSaleCart)(sku, e.target.value)}
                         />
-                        <button onClick={() => incCart(setSaleCart)(sku, 1)}>+</button>
+                        <button className='qty-controls-button' onClick={() => incCart(setSaleCart)(sku, 1)}>+</button>
                       </div>
                       {over && <small className="stock-info">Недостаточно на складе</small>}
                     </li>
@@ -574,6 +565,7 @@ export default function Admin() {
         </div>
 
         {uiMsg && <div className="ui-msg">{uiMsg}</div>}
+      </div>
       </div>
     </div>
   );

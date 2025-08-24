@@ -34,7 +34,14 @@
     ]
   },
   "devDependencies": {
+    "eslint-plugin-react-hooks": "^5.2.0",
     "http-proxy-middleware": "^3.0.5"
-  }
+  },
   
+    "plugins": ["react-hooks"],
+    "extends": ["react-app", "react-app/jest"],
+    "rules": {
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "off"
+    }
 }

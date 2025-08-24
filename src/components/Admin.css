@@ -9,12 +9,45 @@
   --neo-muted: #9fb3c8;
 }
 .admin-panel {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    justify-content: center;
-    padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* расстояние между строками */
+  align-items: center;
+}
+.button-log{
+  width: 17rem;
+  height: 4rem;
+  background-color: #1f1f2e;
+  border: 2px solid #444;
+  border-radius: 0.5rem ;
+  color: #e7ecff;
+  font-weight: 500;
+  transition: all 0.1s ease-in-out;
+}
+.button-log:hover{
+  cursor: pointer;
+  background-color: #111118 ;
+  border: 2px solid #585858;
+
+}
+.row {
+  width: 90%;
+  display: grid;
+  grid-template-columns: 1fr 2fr; /* статистика/плитки - 1 часть, календарь/напитки - 2 части */
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.row-bottom {
+  grid-template-columns: 2fr 3fr; /* плитки шире, напитки ещё шире */
+}
+
+/* адаптив */
+@media (max-width: 710px) {
+  .row {
+    grid-template-columns: 1fr; /* в одну колонку */
   }
+}
   
   .admin-box {
     width: 10rem;
@@ -87,17 +120,23 @@
   .stats-display {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: 1.2rem;
+    margin-top: 3rem;
   }
   .stats-display p {
-    background: #0022ff;
+    font-weight: 700;
+    background: radial-gradient(120% 140% at 0% 0%, rgba(0, 234, 255, .08) 0%, rgba(255, 0, 230, .05) 40%, rgba(0, 0, 0, .55) 100%), var(--glass-weak);
+    border: .0625rem solid var(--white-10);
+    box-shadow: 0 0 .75rem rgba(0, 0, 0, .35), var(--shadow-cyan);
+    backdrop-filter: blur(.6rem);
     padding: 1.2rem;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    flex: 1;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    flex: 1 1;
     text-align: center;
-    font-size: 14px;
+    font-size: 1.2rem;
+    margin: 0.3rem;
+    color: #e7ecff;
   }
   .booking{
     display: flex;
@@ -233,7 +272,7 @@
      Forms layout
   ----------------------- */
   .drinks-forms{ display: grid; grid-template-columns: 1fr; gap: 1rem; }
-  @media (min-width: 55rem){ .drinks-forms{ grid-template-columns: 1fr 1fr; } }
+  
   
   .form-block{
     padding: 0.875rem; border-radius: 0.75rem;
@@ -284,8 +323,8 @@
   /* Quantity controls inside tiles */
   .qty-controls{ display: inline-flex; align-items: center; gap: 0.5rem; margin-left: 0.5rem; }
   .qty-controls input{ width: 3.5rem; text-align: center; }
-  .qty-controls button{
-    min-width: 2rem; height: 2rem; line-height: 2rem; padding: 0 0.5rem;
+  .qty-controls-button{
+    min-width: 2rem; height: 2rem; line-height: 2rem; padding: 0.1rem 0.5rem;
     border-radius: 0.5rem; border: 0; cursor: pointer;
     color: #0a0f1f; font-weight: 700;
     background: linear-gradient(90deg, var(--neo-accent), var(--neo-accent-2));
@@ -353,4 +392,3 @@
   @media (min-width: 30.0625rem) and (max-width: 64rem){
     .drinks-section{ padding: 1.125rem; }
   }
-  
