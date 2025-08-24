@@ -507,14 +507,14 @@ export default function Admin() {
                       <span className="drink-price">{d.price} MDL</span>
                       <span className="drink-stock">На складе: {stock}</span>
                       <div className="qty-controls" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => decCart(setShipmentCart)(sku, 1)}>-</button>
+                        <button className='qty-controls-button' onClick={() => decCart(setShipmentCart)(sku, 1)}>-</button>
                         <input
                           type="number"
                           min={0}
                           value={qty}
                           onChange={(e) => setCartQty(setShipmentCart)(sku, e.target.value)}
                         />
-                        <button onClick={() => incCart(setShipmentCart)(sku, 1)}>+</button>
+                        <button className='qty-controls-button' onClick={() => incCart(setShipmentCart)(sku, 1)}>+</button>
                       </div>
                     </li>
                   );
