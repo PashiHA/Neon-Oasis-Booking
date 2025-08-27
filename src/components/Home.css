@@ -411,10 +411,10 @@
       bottom: -5rem;
     }
     .billiard1 {
-      left: 2rem;
+      left: 1rem;
     }
     .billiard2{
-      left: 30rem;
+      left: 28rem;
     }
     .room-layout {
       width: 39rem;
@@ -425,12 +425,12 @@
       height: 12.5rem;
   }
   .ps1{
-    right: 11.5rem;
+    right: 13.5rem;
     bottom: -19rem;
   }
   .ps2 {
     bottom: -4rem;
-    left: 15rem;
+    left: 13rem;
 }
     .vr1, .vr2, .vr3, .vr4 {
       width: 15rem;
@@ -443,10 +443,10 @@
     top: 8.5rem;
  }
  .vr4{
-  left: 23rem;
+  left: 21rem;
  }
   .vr3{
-    left: 23rem;
+    left: 21rem;
   }
   }
 
