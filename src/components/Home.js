@@ -4,8 +4,15 @@ import ps5 from '../img/ps5.png';
 import vr from '../img/vr.png';
 import billiard from '../img/billiard.png';
 import palma from '../img/palma.png'
+import HomeSlider from './HomeSlider.js';
 import { db } from '../firebase';
 import { ref, onValue } from 'firebase/database';
+import s1 from "../img/s1.jpg";
+import s2 from "../img/s2.jpg";
+import s3 from "../img/s3.jpg";
+import s4 from "../img/s4.jpg";
+import s5 from "../img/s5.jpg";
+import s6 from "../img/s6.jpg";
 
 function Home() {
   const [status, setStatus] = useState({});
@@ -52,9 +59,13 @@ function Home() {
 
   return (
     <div className="home">
-      <div className="logo-section">
-        <div className="logo-circle"><img src={palma}/></div>
-        <h1 className="brand-title">NEON OASIS</h1>
+        <div className='logo-section-container'>
+        <div className="logo-section">
+          <div className="logo-circle"><img src={palma}/>
+        </div>
+        <h5 className="brand-title">Добро пожаловать в <span>Neon Oasis</span> - твой оазис развлечений, драйва и незабываемых впечатлений.</h5>
+        </div>
+        <HomeSlider images={[s1, s2, s3, s4, s5, s6]} interval={2000} />
       </div>
 
       <section className="activities">

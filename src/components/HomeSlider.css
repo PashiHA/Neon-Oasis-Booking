@@ -1,0 +1,106 @@
+/* src/components/HomeSlider.css */
+
+/* Контейнер */
+.slider {
+    position: relative;
+    width: 45rem;
+    max-width:38rem;           /* подгони под свою ширину */
+    aspect-ratio: 16 / 9;        /* современно: гарантирует высоту, можно изменить */
+    overflow: hidden;
+    border-radius: 16px;
+    background: #0c0c18;
+    box-shadow:
+      0 0 0.75rem rgba(0,0,0,.4),
+      0 0 24px rgba(79,108,255,.25),
+      inset 0 0 8px rgba(255,0,255,.1);
+  }
+  
+  /* Слайды: фейд без сдвига */
+  .slide {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transform: scale(1.02);
+    transition: opacity .6s ease, transform 1.8s ease;
+    will-change: opacity, transform;
+  }
+  .slide.is-active {
+    opacity: 1;
+    transform: scale(1);
+  }
+  
+  /* Стрелки */
+  .nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.25);
+    background: rgba(0,0,0,.35);
+    color: #fff;
+    font-size: 26px;
+    line-height: 44px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 2;
+    transition: background .2s ease, box-shadow .2s ease;
+    backdrop-filter: blur(3px);
+  }
+  .nav:hover {
+    background: rgba(0,0,0,.55);
+    box-shadow: 0 0 12px #00e7ff, 0 0 24px #ff00e7;
+  }
+  .nav-left { left: 12px; }
+  .nav-right { right: 12px; }
+  
+  /* Точки */
+  .dots {
+    position: absolute;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 2;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    border: 2px solid rgba(255,255,255,.6);
+    background: rgba(0,0,0,.45);
+    cursor: pointer;
+    transition: transform .15s ease, background .2s ease, box-shadow .2s ease;
+  }
+  .dot:hover {
+    transform: scale(1.15);
+  }
+  .dot.active {
+    background: linear-gradient(135deg, #00e7ff, #ff00e7);
+    border-color: transparent;
+    box-shadow: 0 0 8px #00e7ff, 0 0 16px #ff00e7;
+  }
+  @media (max-width: 1150px){
+    .slider{
+        max-width: 25rem;
+    }
+  }
+  @media (max-width: 901px) {
+    .slider {
+        max-width: 38rem;
+    }
+}
+  /* Мобильные правки */
+  @media (max-width: 640px) {
+    .slider {
+      border-radius: 12px;
+    }
+    .nav { display: none; } /* на мобилке можно спрятать стрелки, есть свайп и точки */
+    .dots { gap: 8px; bottom: 10px; }
+    .dot { width: 9px; height: 9px; }
+  }
+  

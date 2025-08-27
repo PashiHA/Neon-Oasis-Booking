@@ -45,7 +45,7 @@ function App() {
 
   return (
     <Router>
-      <div style={{ fontFamily: 'Arial' }}>
+      <div style={{ fontFamily: 'Exo 2' }}>
         <header>
           <img src={logo} alt="Logo" />
 

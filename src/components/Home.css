@@ -1,9 +1,10 @@
 .home {
     color: #fff;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: 'Exo 2', sans-serif; /* основной шрифт */
     text-align: center;
     padding: 2rem;
   }
+
   
   .navbar {
     display: flex;
@@ -19,9 +20,19 @@
     color: #00f0ff;
     font-weight: bold;
   }
-  
+  .logo-section-container{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    justify-content: space-around;
+    margin-bottom: 4rem;
+    align-items: center;
+  }
   .logo-section {
-    margin-bottom: 2rem;
+    width: 23rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 auto;
   }
   
   .logo-circle {
@@ -35,11 +46,68 @@
     color: #ff00ff;
     animation: pulse-neon  4s infinite alternate;
   }
+  .slider-home{
+    width: 10rem;
+    height: 5rem;
+    background-color: #00ff00;
+  }
   
   .brand-title {
-    font-size: 2.5rem;
-    color: #ff00ff;
+    width: 80%;
     margin-top: 1rem;
+    line-height: 1.5;
+    text-align: center;
+    font-size: 1.1rem;
+    color: #c8e7ff;
+    font-weight: 600;
+    opacity: .95;
+    font-family: 'Monoton', sans-serif;
+    /* легкое неоновое свечение */
+    text-shadow:
+      0 0 .25rem rgba(0, 255, 255, .35),
+      0 0 .6rem rgba(0, 160, 255, .25);
+    animation: neonPulse1 3.8s ease-in-out infinite;
+  }
+  .brand-title span{
+    font-family: 'Orbitron', sans-serif;
+    color: #58f0ff;
+    text-shadow:
+      0 0 .35rem rgba(88, 240, 255, .7),
+      0 0 1rem rgba(88, 240, 255, .45);
+    position: relative;
+  }
+  .brand-title span::after{
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg,
+      transparent 0%,
+      rgba(255,255,255,.6) 45%,
+      transparent 90%);
+    mix-blend-mode: screen;
+    transform: translateX(-120%) skewX(-12deg);
+    animation: shimmer 4.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes neonPulse1{
+    0%,100%{
+      text-shadow:
+        0 0 .25rem rgba(0, 255, 255, .35),
+        0 0 .6rem rgba(0,160,255,.25);
+    }
+    50%{
+      text-shadow:
+        0 0 .4rem rgba(0, 255, 255, .6),
+        0 0 1.1rem rgba(0,160,255,.4);
+    }
+  }
+  
+  /* пробегающий блик */
+  @keyframes shimmer{
+    0%   { transform: translateX(-120%) skewX(-12deg); opacity: .0; }
+    15%  { opacity: .55; }
+    40%  { transform: translateX(120%) skewX(-12deg); opacity: 0; }
+    100% { transform: translateX(120%) skewX(-12deg); opacity: 0; }
   }
   
   .section-title {
@@ -271,6 +339,13 @@
   }
   .ps1 > .status , .ps2 > .status{
     margin-top: 6.5rem;
+  }
+  @media (max-width:901px) {
+    .logo-section-container{
+      display: flex;
+      flex-direction: column;
+    }
+    
   }
   @media (max-width: 768px) {
     html, body {
