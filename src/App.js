@@ -83,7 +83,7 @@ function App() {
         <footer>
           <img src={logo}/>
           <div className="footer-media">
-            <a href="https://www.instagram.com/_neon_oasis_?igsh=MWJyczZ0Ynd0YXUzcQ==" target="_blank" rel="noopener noreferrer" className="media-link">
+            <a href="https://www.instagram.com/neon_0asis?igsh=MWJyczZ0Ynd0YXUzcQ==" target="_blank" rel="noopener noreferrer" className="media-link">
               <FaInstagram className="icon neon" />
               <span className="media-label">Наш Instagram</span>
             </a>
