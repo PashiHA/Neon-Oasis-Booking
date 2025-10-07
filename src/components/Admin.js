@@ -1,4 +1,4 @@
-// src/components/Admin.js — robust + drinks as collapsible tiles (shipment & sale carts)
+// src/components/Admin.js — robust + drinks as collapsible tiles (shipment & sale carts) + AUTOSIM (sim1)
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './Admin.css';
 import { db } from '../firebase';
@@ -22,7 +22,8 @@ const INITIAL_STATUSES = {
   ps1: { status: 'Свободно', until: null },
   ps2: { status: 'Свободно', until: null },
   billiard1: { status: 'Свободно', until: null },
-  billiard2: { status: 'Свободно', until: null }
+  billiard2: { status: 'Свободно', until: null },
+  autosim1: { status: 'Свободно', until: null }
 };
 
 // Каталог напитков и цены (MDL)
@@ -48,7 +49,7 @@ const getLocalDayKeyFromTs = (ts) => {
 };
 
 const serviceCategory = (key) =>
-  key.startsWith('vr') ? 'vr' : key.startsWith('ps') ? 'ps' : 'billiard';
+  key.startsWith('vr') ? 'vr' : key.startsWith('ps') ? 'ps' : key.startsWith('billiard') ? 'billiard' : (key.startsWith('sim') || key.startsWith('autosim')) ? 'sim' : 'other';
 
 // -------------------- Component --------------------
 export default function Admin() {
@@ -57,7 +58,7 @@ export default function Admin() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [hours, setHours] = useState(0);
   const [minutes, setMinutes] = useState(30);
-  const [dailyStats, setDailyStats] = useState({ vr: 0, ps: 0, billiard: 0, revenueMDL: 0 });
+  const [dailyStats, setDailyStats] = useState({ vr: 0, ps: 0, billiard: 0, sim: 0, revenueMDL: 0 });
   const [bookingsList, setBookingsList] = useState([]);
   const [logs, setLogs] = useState([]);
 
@@ -142,7 +143,7 @@ export default function Admin() {
     const statsRef = ref(db, `dailyStats/${todayKey}`);
     const unsub = onValue(statsRef, (snap) => {
       const data = snap.val() || {};
-      setDailyStats({ vr: 0, ps: 0, billiard: 0, revenueMDL: 0, ...data });
+      setDailyStats({ vr: 0, ps: 0, billiard: 0, sim: 0, revenueMDL: 0, ...data });
     });
     return () => unsub();
   }, [todayKey]);
@@ -387,6 +388,7 @@ export default function Admin() {
       `VR: ${format(dailyStats.vr)}`,
       `PlayStation: ${format(dailyStats.ps)}`,
       `Бильярд: ${format(dailyStats.billiard)}`,
+      `Автосимулятор: ${format(dailyStats.sim)}`,
       `Выручка (напитки): ${Number(dailyStats.revenueMDL || 0).toFixed(2)} MDL`
     ];
     const allLines = [...historyHeader, ...logs, ...summaryHeader];
@@ -414,6 +416,9 @@ export default function Admin() {
         </p>
         <p>
           Бильярд: {`${Math.floor(dailyStats.billiard / 3_600_000)} ч ${Math.floor((dailyStats.billiard % 3_600_000) / 60_000)} мин`}
+        </p>
+        <p>
+          Автосимулятор: {`${Math.floor(dailyStats.sim / 3_600_000)} ч ${Math.floor((dailyStats.sim % 3_600_000) / 60_000)} мин`}
         </p>
         <p>Выручка (напитки): {Number(dailyStats.revenueMDL || 0).toFixed(2)} MDL</p>
       </div>

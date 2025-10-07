@@ -99,6 +99,9 @@ function Home() {
           <div className="ps-zone">
             {['ps1', 'ps2'].map(renderBox)}
           </div>
+          <div className="autosim-zone">
+            {['autosim1', ].map(renderBox)}
+          </div>
         </div>
       </section>
 
