@@ -26,7 +26,7 @@ export default function Booking() {
     });
   }, []);
 
-  const capacity = { VR: 4, PS5: 2, Billiard: 2 };
+  const capacity = { VR: 4, PS5: 2, Billiard: 2, Autosim:1};
 
   const generateTimes = () => {
     const slots = [];
@@ -120,6 +120,7 @@ export default function Booking() {
             <option value="VR">VR</option>
             <option value="PS5">PlayStation 5</option>
             <option value="Billiard">Бильярд</option>
+            <option value="Autosim">Автосимулятор</option>
           </select>
         </label>
         <label>Кол-во мест:
