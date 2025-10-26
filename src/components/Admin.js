@@ -23,7 +23,8 @@ const INITIAL_STATUSES = {
   ps2: { status: 'Свободно', until: null },
   billiard1: { status: 'Свободно', until: null },
   billiard2: { status: 'Свободно', until: null },
-  autosim1: { status: 'Свободно', until: null }
+  autosim1: { status: 'Свободно', until: null },
+  autosim2: { status: 'Свободно', until: null }
 };
 
 // Каталог напитков и цены (MDL)

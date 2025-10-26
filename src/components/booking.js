@@ -26,7 +26,7 @@ export default function Booking() {
     });
   }, []);
 
-  const capacity = { VR: 4, PS5: 2, Billiard: 2, Autosim:1};
+  const capacity = { VR: 4, PS5: 2, Billiard: 2, Autosim:2};
 
   const generateTimes = () => {
     const slots = [];

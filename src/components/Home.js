@@ -101,6 +101,7 @@ function Home() {
           </div>
           <div className="autosim-zone">
             {['autosim1', ].map(renderBox)}
+            {['autosim2', ].map(renderBox)}
           </div>
         </div>
       </section>

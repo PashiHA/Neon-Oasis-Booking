@@ -289,6 +289,17 @@
     bottom: 17.5rem; 
     left: 8rem;
   }
+  .autosim2{
+    width: 15rem;
+    height: 10rem;
+    position: absolute;
+    background-image: url(../img/autosim.png);
+    background-size: cover;       
+    background-repeat: no-repeat;
+    background-position: center; 
+    right: 5rem;
+    top: 14.5rem;
+  }
   .status{
     display: flex;
     justify-content: center;
@@ -346,10 +357,10 @@
     height: 13.5rem;
   }
   .ps1{
-    top:4rem;
+    top: -0.5rem;
   }
   .ps2{
-    bottom:7rem;
+    bottom:1rem;
 
   }
   .ps1 > .status , .ps2 > .status{
@@ -435,7 +446,11 @@
     }
     .autosim1{
       left: 12rem;
-      bottom: 10rem;
+      bottom: 12rem;
+    }
+    .autosim2{
+      right: 12rem;
+      top: 31.5rem;
     }
     .room-layout {
       width: 39rem;
@@ -446,12 +461,12 @@
       height: 12.5rem;
   }
   .ps1{
-    right: 5.5rem;
+    right: -1.5rem;
     top: 36.5rem;
   }
   .ps2 {
     bottom: -7rem;
-    left: 5rem;
+    left: -1.5rem;
 }
     .vr1, .vr2, .vr3, .vr4 {
       width: 15rem;
