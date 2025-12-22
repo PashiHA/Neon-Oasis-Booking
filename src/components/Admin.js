@@ -37,7 +37,10 @@ const DRINKS = {
   frunzea_05: { name: 'Ceai Frunzea 0.5 l', price: 20 },
   cappy_02: { name: 'Cappy 0.2 l', price: 13 },
   monster_05:{name:'Monster 0.5 l', price: 30},
-  burn_0250:{name: 'Burn 0.25 l', price: 25}
+  burn_0250:{name: 'Burn 0.25 l', price: 25},
+  cola_033: { name: 'Coca‑Cola 0.33 l', price: 13 },
+  fanta_033: { name: 'Fanta 0.33 l', price: 13 },
+  sprite_033: { name: 'Sprite 0.33 l', price: 13 },
 };
 const DRINK_KEYS = Object.keys(DRINKS);
 
