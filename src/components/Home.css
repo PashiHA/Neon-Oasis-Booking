@@ -366,6 +366,46 @@
   .ps1 > .status , .ps2 > .status{
     margin-top: 6.5rem;
   }
+  .pc-row{
+  width: 57rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+.pc-card-wrap{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+}
+
+.pc-card-title{
+  font-size: 1rem;
+  color: #c8e7ff;
+  text-shadow: 0 0 5px #0ff, 0 0 10px #0ff;
+  font-weight: 700;
+}
+
+.pc-row .box{
+  width: 10.5rem;
+  height: 7.5rem;
+  position: relative; /* важно: чтобы не было absolute как у vr/ps */
+  background-color: #222;
+  background-image: url(../img/pc_booking.png); /* ✅ добавь картинку, или закомментируй */
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* чуть компактнее текст в карточке ПК */
+.pc-row .status h3,
+.pc-row .time-left{
+  font-size: .95rem;
+}
+
   @media (max-width:901px) {
     .logo-section-container{
       display: flex;
@@ -484,6 +524,18 @@
   .vr3{
     left: 21rem;
   }
+  .pc-row{
+    width: 40rem;
+    gap: 1.5rem;
+        margin-top: 9rem;
+  }
+  .pc-card-wrap {
+    gap: 1.5rem;
+}
+.pc-row .box {
+    width: 11.5rem;
+    height: 8.5rem;
+  }
   }
 
   
@@ -512,5 +564,6 @@
     }
   }
   
-  
+  /* ===== ПК (ряд ниже схемы) ===== */
+
   

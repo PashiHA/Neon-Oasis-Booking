@@ -1,277 +1,450 @@
-/* Основные стили */
-body {
-  font-family: 'Exo 2', sans-serif;
+/* =========================
+   GLOBAL / RESET
+========================= */
+:root{
+  --neon-cyan: rgba(0,229,255,.40);
+  --neon-purple: rgba(161,0,255,.30);
+  --neon-pink: rgba(255,44,120,.26);
+
+  --text: #fff;
+  --link: #ff00ff;
+  --link-hover: #a206a2;
+
+  --panel: rgba(0,0,0,.55);
+  --panel-strong: rgba(0,0,0,.78);
+
+  --shadow-text: 0 0 12px rgba(0,0,0,.70);
+  --radius: 14px;
+}
+
+*,
+*::before,
+*::after{
+  box-sizing: border-box;
+}
+
+html, body{
   height: 100%;
-  background-image: url('./img/baground.png');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
   margin: 0;
   padding: 0;
 }
 
-header {
-  color: #fff;
-  padding: 2rem;
+html{
+  scroll-behavior: smooth; /* плавные якоря */
+}
+
+body{
+  font-family: 'Exo 2', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  overflow-x: hidden;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* =========================
+   SITE BACKGROUND (BRICK + LIGHT NEON)
+========================= */
+.site-bg{
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate; /* чтобы эффекты не ломали UI */
+
+  background-image: url('./img/baground.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-attachment: scroll;
+
+  /* слегка сглаживает "ощущение" скролла */
+  overflow: clip;
+}
+
+/* ✅ fixed включаем только на десктопе (обычно без лагов) */
+@media (min-width: 1024px){
+  .site-bg{
+    background-attachment: fixed;
+  }
+}
+
+/* ✅ Лёгкий неон в 2 слоя: transform (GPU) + opacity */
+.site-bg::before,
+.site-bg::after{
+  content:"";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+
+  will-change: transform, opacity;
+  transform: translate3d(0,0,0);
+  backface-visibility: hidden;
+
+  /* screen красиво, но может быть дороже.
+     если хочешь максимальный FPS — поставь normal */
+  mix-blend-mode: screen;
+
+  opacity: .28;
+}
+
+/* Горизонтальные линии */
+.site-bg::before{
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 70px,
+      var(--neon-cyan) 70px 73px,
+      transparent 73px 160px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 120px,
+      var(--neon-purple) 120px 123px,
+      transparent 123px 260px
+    );
+
+  animation:
+    neon-pan-x 10s linear infinite,
+    neon-pulse 2.2s ease-in-out infinite;
+}
+
+/* Вертикальные линии */
+.site-bg::after{
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 90px,
+      var(--neon-pink) 90px 92px,
+      transparent 92px 220px
+    );
+  opacity: .20;
+
+  animation:
+    neon-pan-y 12s linear infinite,
+    neon-pulse 2.6s ease-in-out infinite;
+}
+
+/* Контент поверх */
+.site-bg > *{
+  position: relative;
+  z-index: 1;
+}
+
+/* =========================
+   HEADER
+========================= */
+header{
+  color: var(--text);
+  padding: clamp(12px, 2.5vw, 28px);
   display: flex;
   align-items: center;
   justify-content: space-around;
-  position: relative;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+
+  /* лёгкая подложка, чтобы текст читался */
+  background: linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,.18));
+  backdrop-filter: blur(6px);
 }
 
-header img {
-  width: 6rem;
-  height: 3rem;
+header img{
+  width: clamp(8rem, 10vw, 120px);
+  height: auto;
+  display: block;
 }
 
-/* Десктопное меню */
-.desktop-nav {
+/* =========================
+   MAIN
+========================= */
+.main{
+  padding: clamp(14px, 2vw, 24px);
+}
+
+/* =========================
+   NAV (DESKTOP)
+========================= */
+.desktop-nav{
   display: flex;
-  justify-content: space-around;
-  width: 30rem;
+  align-items: center;
+  justify-content: flex-end;
+  gap: clamp(10px, 2vw, 22px);
 }
 
-.link {
-  font-size: 1.5rem;
+.link{
+  font-size: clamp(1rem, 1.1vw + .6rem, 1.35rem);
   text-decoration: none;
-  color: #ff00ff;
-  font-weight: 700;
-  transition: color 0.3s;
+  color: var(--link);
+  font-weight: 800;
+  letter-spacing: .2px;
+  transition: color .2s ease, transform .2s ease, filter .2s ease;
+  text-shadow: 0 0 10px rgba(0,0,0,.55);
 }
 
-.link:hover {
-  color: #a206a2;
+.link:hover{
+  color: var(--link-hover);
+  transform: translateY(-1px);
+  filter: drop-shadow(0 0 10px rgba(255,0,255,.25));
 }
 
-/* HOME */
-.home {
-  padding: 1.25rem;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #222;
+/* =========================
+   HOME / CONTENT
+========================= */
+.home{
+  padding: clamp(12px, 2vw, 20px);
+  border-radius: var(--radius);
+  background: rgba(0,0,0,.28);
+  backdrop-filter: blur(4px);
+  max-width: 1100px;
+  margin: 0 auto;
+
+  /* оптимизация отрисовки крупных блоков */
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 500px;
 }
 
-.section-title {
-  margin-bottom: 0.625rem;
-  color: #2c3e50;
-  font-size: 1.5rem;
+.section-title{
+  margin: 0 0 10px 0;
+  color: var(--text);
+  font-size: clamp(1.15rem, 1vw + .9rem, 1.7rem);
+  text-shadow: var(--shadow-text);
 }
 
 .activity-list,
-.status-list {
+.status-list{
   list-style: none;
   padding-left: 0;
-  margin-bottom: 1.25rem;
+  margin: 0 0 18px 0;
+  display: grid;
+  gap: 10px;
 }
 
 .activity-list li,
-.status-list li {
-  padding: 0.375rem 0;
-  font-size: 1.125rem;
+.status-list li{
+  padding: 10px 12px;
+  font-size: clamp(0.98rem, .6vw + .85rem, 1.15rem);
+  color: var(--text);
+  text-shadow: var(--shadow-text);
+  border-radius: 12px;
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255,255,255,.06);
 }
 
-.status-item {
+/* Статусы */
+.status-item{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: 25rem;
+  gap: 12px;
+  width: 100%;
 }
 
-.toggle-button {
-  margin-left: 1rem;
-  padding: 0.4rem 0.75rem;
+.toggle-button{
+  padding: 10px 14px;
   font-size: 1rem;
-  background-color: #3498db;
   border: none;
   color: white;
-  border-radius: 0.375rem;
+  border-radius: 12px;
   cursor: pointer;
+
+  background: linear-gradient(135deg, rgba(52,152,219,.95), rgba(41,128,185,.95));
+  transition: transform .15s ease, filter .2s ease, opacity .2s ease;
+  will-change: transform;
 }
 
-.toggle-button:hover {
-  background-color: #2980b9;
+.toggle-button:hover{
+  transform: translateY(-1px);
+  filter: drop-shadow(0 0 12px rgba(52,152,219,.25));
 }
 
-/* Гамбургер и мобильная навигация */
-.hamburger {
+.toggle-button:active{
+  transform: translateY(0);
+  opacity: .92;
+}
+
+/* =========================
+   HAMBURGER + MOBILE NAV
+========================= */
+.hamburger{
   display: none;
   flex-direction: column;
   cursor: pointer;
-  gap: 5px;
-  padding: 0.5rem;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(0,0,0,.25);
+  border: 1px solid rgba(255,255,255,.06);
   z-index: 1001;
 }
 
-.hamburger span {
+.hamburger span{
   height: 3px;
-  width: 25px;
-  background: #ff00ff;
-  border-radius: 5px;
+  width: 26px;
+  background: var(--link);
+  border-radius: 999px;
 }
 
-.mobile-nav {
+.mobile-nav{
   max-height: 0;
   overflow: hidden;
+  display: flex;
   flex-direction: column;
-  width: 50%;
-  background: rgba(0, 0, 0, 0.9);
+  gap: 6px;
+
+  width: min(76vw, 340px);
+  background: var(--panel-strong);
   position: absolute;
   top: 100%;
-  left: 45%;
-  text-align: center;
+  right: 12px;
+
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 18px 40px rgba(0,0,0,.35);
+  padding: 0 10px;
+
   z-index: 1000;
-  transition: max-height 0.3s ease-in-out;
+  transition: max-height .25s ease-in-out, padding .25s ease-in-out;
 }
 
-.mobile-nav .link {
+.mobile-nav .link{
   border: none;
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  font-size: 1.1rem;
+  text-shadow: none;
 }
 
-.mobile-nav.active {
-  display: flex;
-  max-height: 50vh;
+.mobile-nav .link:last-child{
+  border-bottom: none;
 }
 
-.mobile-nav .link {
-  border: none;
+.mobile-nav.active{
+  max-height: 60vh;
+  padding: 10px;
 }
 
-.mobile-nav.active {
-  display: flex;
-}
+/* =========================
+   FOOTER
+========================= */
 footer{
-  height: 10rem;
+  margin-top: 30px;
+  padding: clamp(16px, 3vw, 28px);
   display: flex;
   align-items: center;
   justify-content: space-around;
-  background-color: #161718c7;
+  gap: 18px;
+  flex-wrap: wrap;
+
+  background: rgba(22,23,24,.78);
+  border-top: 1px solid rgba(255,255,255,.06);
 }
+
 footer > img{
-  width: 7rem;
-  height: 4rem;
+  width: clamp(8rem, 14vw, 140px);
+  height: auto;
+  display: block;
 }
-.footer-media {
+
+.footer-media{
   display: flex;
-  gap: 2rem;
+  gap: 16px;
+  align-items: center;
   justify-content: center;
-  margin-top: 2rem;
+  flex-wrap: wrap;
 }
 
-.footer-media a {
+.footer-media a{
   text-decoration: none;
-  font-size: 2rem;
+  font-size: 1.8rem;
   color: #fff;
-  transition: filter 0.3s ease-in-out;
+  transition: filter .2s ease, transform .2s ease, opacity .2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.footer-media a:hover {
+.footer-media a:hover{
+  transform: translateY(-1px);
   filter:
     drop-shadow(0 0 4px #fff)
-    drop-shadow(0 0 10px #ff00ff)
-    drop-shadow(0 0 20px #ff00ff)
-    drop-shadow(0 0 30px #ff00ff);
+    drop-shadow(0 0 10px rgba(255,0,255,.55))
+    drop-shadow(0 0 18px rgba(255,0,255,.35));
 }
+
 .media-label{
   font-size: 1rem;
-  margin-left: 0.5rem;
+  opacity: .9;
 }
 
-@keyframes neon-pulse {
-  from {
-    text-shadow:
-      0 0 4px #fff,
-      0 0 10px #ff00ff,
-      0 0 20px #ff00ff,
-      0 0 30px #ff00ff,
-      0 0 40px #ff00ff;
-  }
-  to {
-    text-shadow:
-      0 0 2px #fff,
-      0 0 5px #ff00ff,
-      0 0 10px #ff00ff,
-      0 0 15px #ff00ff,
-      0 0 20px #ff00ff;
-  }
+/* =========================
+   ANIMATIONS (LIGHT)
+========================= */
+@keyframes neon-pan-x{
+  0%   { transform: translate3d(-6%, 0, 0); }
+  100% { transform: translate3d( 6%, 0, 0); }
+}
+@keyframes neon-pan-y{
+  0%   { transform: translate3d(0, -6%, 0); }
+  100% { transform: translate3d(0,  6%, 0); }
+}
+@keyframes neon-pulse{
+  0%, 100% { opacity: .16; }
+  50%      { opacity: .52; }
 }
 
-/* Медиа-запрос для планшетов и телефонов */
-@media (max-width: 768px) {
-  html, body {
-    width: 100%;
-    overflow-x: hidden;
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 768px){
+  .desktop-nav{ display: none; }
+  .hamburger{ display: flex; }
+
+  header{
+    justify-content: space-between;
+    padding: 2rem 3rem;
   }
 
-  header {
-    gap: 0.5rem;
-    padding: 1rem;
-    text-align: center;
-    justify-content: space-around;
-  }
-
-  header img {
-    height: auto;
-    margin-bottom: 0.5rem;
-  }
-
-  .desktop-nav {
-    display: none;
-  }
-
-  .hamburger {
-    display: flex;
-  }
-
-  .link {
-    font-size: 1.2rem;
-    padding: 0.75rem 0;
-    display: block;
-    color: #ff00ff;
-    text-decoration: none;
-    border-bottom: 1px solid #333;
-  }
-
-  main {
-    padding: 1rem;
-  }
-
-  .home {
-    padding: 1rem;
-  }
-
-  .status-item {
+  .status-item{
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
+    align-items: stretch;
   }
 
-  .toggle-button {
+  .toggle-button{
     width: 100%;
     text-align: center;
-    margin-left: 0;
-  }
-
-  .section-title {
-    font-size: 1.25rem;
-  }
-
-  .activity-list li,
-  .status-list li {
-    font-size: 1rem;
   }
 }
 
-/* Улучшения для очень маленьких экранов */
-@media (max-width: 480px) {
-  .link {
-    font-size: 1rem;
+@media (max-width: 480px){
+  .footer-media a{
+    font-size: 1.6rem;
   }
+  .media-label{
+    font-size: .95rem;
+  }
+}
 
-  .toggle-button {
-    font-size: 0.9rem;
-    padding: 0.3rem 0.5rem;
+/* =========================
+   REDUCED MOTION
+========================= */
+@media (prefers-reduced-motion: reduce){
+  html{ scroll-behavior: auto; }
+  .site-bg::before,
+  .site-bg::after{
+    animation: none;
+    opacity: .12;
   }
+}
 
-  .section-title {
-    font-size: 1.1rem;
-  }
+/* =========================
+   EXTRA PERFORMANCE SWITCH (optional)
+   Если где-то всё равно слабое устройство:
+   можно вручную добавить класс .low-perf на body
+========================= */
+body.low-perf .site-bg::before,
+body.low-perf .site-bg::after{
+  mix-blend-mode: normal;
+  animation: none;
+  opacity: .10;
 }

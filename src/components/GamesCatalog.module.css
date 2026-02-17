@@ -1,0 +1,478 @@
+/* =========================
+   PAGE / TOP
+========================= */
+.page{
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 14px 12px 34px 12px; /* добавил боковые паддинги */
+  color: #fff;
+}
+
+.top{
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.pageTitle{
+  margin: 0;
+  font-size: clamp(1.55rem, 2.2vw + 1rem, 2.35rem);
+  font-weight: 900;
+  letter-spacing: .4px;
+  text-shadow: 0 0 18px rgba(255,0,255,.22);
+}
+
+.pageSubtitle{
+  margin: 8px 0 0 0;
+  opacity: .9;
+  font-size: clamp(.95rem, .6vw + .85rem, 1.1rem);
+}
+
+/* =========================
+   TOC
+========================= */
+.toc{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 14px 0 18px 0;
+}
+
+.tocBtn{
+  border: 1px solid rgba(255,0,255,.22);
+  background: rgba(0,0,0,.52);
+  border-radius: 16px;
+  padding: 12px 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+  color: #fff;
+  min-height: 70px;
+}
+
+.tocBtn:hover{
+  transform: translateY(-2px);
+  border-color: rgba(0,229,255,.32);
+  box-shadow: 0 0 0 2px rgba(0,229,255,.10), 0 0 22px rgba(255,0,255,.12);
+}
+
+.tocTitle{
+  display: block;
+  font-weight: 900;
+  font-size: clamp(1.0rem, .7vw + .85rem, 1.2rem);
+}
+
+.tocSub{
+  display: block;
+  margin-top: 6px;
+  opacity: .85;
+  font-size: clamp(.88rem, .5vw + .78rem, 1.0rem);
+}
+
+.tocDots{
+  display: block;
+  margin-top: 6px;
+  font-size: 1.6rem;
+  opacity: .85;
+}
+
+/* =========================
+   SECTIONS
+========================= */
+.sections{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.sectionCard{
+  border: 1px solid rgba(255,0,255,.20);
+  background: rgba(0,0,0,.52);
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: 0 0 22px rgba(0,0,0,.35);
+}
+
+.sectionHead{
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sectionTitle{
+  font-weight: 900;
+  font-size: clamp(1.15rem, 1vw + 1rem, 1.55rem);
+}
+
+.sectionSub{
+  margin-top: 6px;
+  opacity: .85;
+  font-size: clamp(.92rem, .55vw + .85rem, 1.05rem);
+}
+
+.moreBtn{
+  border: 1px solid rgba(0,229,255,.32);
+  background: rgba(0,0,0,.40);
+  color: #fff;
+  border-radius: 14px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 1.35rem;
+  line-height: 1;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  flex: 0 0 auto;
+}
+
+.moreBtn:hover{
+  transform: translateY(-1px);
+  border-color: rgba(255,0,255,.30);
+  box-shadow: 0 0 18px rgba(0,229,255,.10);
+}
+
+/* =========================
+   PREVIEW GRID (cards)
+   ✅ Чтобы на телефоне влезало больше
+========================= */
+.previewGrid{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+/* компактная карточка */
+.miniCard{
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 10px;
+  text-decoration: none;
+  color: #fff;
+
+  border: 1px solid rgba(0,229,255,.16);
+  background: rgba(0,0,0,.32);
+  border-radius: 16px;
+  padding: 10px;
+
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+  min-height: 96px;
+}
+
+.miniCard:hover{
+  transform: translateY(-2px);
+  border-color: rgba(0,229,255,.28);
+  box-shadow: 0 0 18px rgba(255,0,255,.08);
+}
+
+.miniImg{
+  width: 120px;
+  height: 84px;
+  border-radius: 12px;
+  overflow: hidden;
+
+  border: 1px solid rgba(255,0,255,.14);
+  background: rgba(255,255,255,.03);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.miniImg img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.imgPlaceholder{
+  font-size: 1.6rem;
+  opacity: .85;
+}
+
+.miniInfo{
+  min-width: 0;
+}
+
+.miniTitle{
+  font-weight: 900;
+  font-size: clamp(.95rem, .6vw + .82rem, 1.1rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.miniDesc{
+  margin-top: 6px;
+  opacity: .9;
+  font-size: clamp(.82rem, .45vw + .75rem, .95rem);
+  line-height: 1.32;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;       /* было 3 — уменьшаем, чтобы карточка была компактнее */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* =========================
+   MODAL
+========================= */
+.backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.72);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 12px;
+}
+
+.modal{
+  width: min(1100px, 100%);
+  max-height: 90vh;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(0,229,255,.22);
+  background: rgba(10,10,16,.92);
+  box-shadow: 0 0 40px rgba(0,0,0,.55);
+  display: flex;
+  flex-direction: column;
+}
+
+.modalHeader{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 14px;
+  border-bottom: 1px solid rgba(255,0,255,.16);
+}
+
+.modalTitle{
+  font-weight: 900;
+  font-size: clamp(1.05rem, .7vw + 1rem, 1.35rem);
+}
+
+.closeBtn{
+  border: 1px solid rgba(255,0,255,.22);
+  background: rgba(0,0,0,.35);
+  color: #fff;
+  border-radius: 14px;
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+  font-size: 1rem;
+}
+
+.closeBtn:hover{
+  transform: translateY(-1px);
+  border-color: rgba(0,229,255,.32);
+  box-shadow: 0 0 18px rgba(0,229,255,.10);
+}
+
+.modalBody{
+  padding: 14px;
+  overflow: auto;
+}
+
+/* =========================
+   FILTERS
+========================= */
+.filters{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filterBtn{
+  border: 1px solid rgba(0,229,255,.22);
+  background: rgba(0,0,0,.32);
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+  font-weight: 800;
+  font-size: .95rem;
+}
+
+.filterBtn:hover{
+  transform: translateY(-1px);
+  border-color: rgba(255,0,255,.24);
+  box-shadow: 0 0 18px rgba(255,0,255,.08);
+}
+
+.active{
+  border-color: rgba(0,229,255,.52);
+  box-shadow: 0 0 0 2px rgba(0,229,255,.10);
+}
+
+/* =========================
+   MODAL GRID + CARDS
+   ✅ делаем компактнее, чтобы больше помещалось
+========================= */
+.modalGrid{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+/* было 320px — слишком жирно */
+.modalCard{
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 12px;
+  border: 1px solid rgba(255,0,255,.16);
+  border-radius: 16px;
+  background: rgba(0,0,0,.30);
+  overflow: hidden;
+}
+
+.modalImg{
+  width: 240px;
+  height: 140px;
+  background: rgba(255,255,255,.03);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modalImg img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.imgPlaceholderBig{
+  font-size: 2.0rem;
+  opacity: .85;
+}
+
+.modalInfo{
+  padding: 10px 12px 10px 0;
+  min-width: 0;
+}
+
+.modalGameTitle{
+  font-weight: 900;
+  font-size: clamp(1.05rem, .7vw + 1rem, 1.25rem);
+}
+
+.modalDesc{
+  margin-top: 8px;
+  opacity: .92;
+  line-height: 1.42;
+  font-size: clamp(.92rem, .55vw + .85rem, 1.02rem);
+
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* компактнее */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.modalMeta{
+  margin-top: 8px;
+  opacity: .9;
+  font-weight: 700;
+  font-size: .95rem;
+}
+
+.link{
+  display: inline-block;
+  margin-top: 10px;
+  text-decoration: none;
+  font-weight: 900;
+  color: #ff00ff;
+  font-size: 1rem;
+}
+
+.link:hover{
+  color: #a206a2;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+/* Large tablets / small laptops */
+@media (max-width: 1100px){
+  .toc{ grid-template-columns: repeat(3, 1fr); }
+
+  .modalCard{ grid-template-columns: 220px 1fr; }
+  .modalImg{ width: 220px; height: 132px; }
+
+  .miniCard{ grid-template-columns: 110px 1fr; }
+  .miniImg{ width: 110px; height: 80px; }
+}
+
+/* Tablets */
+@media (max-width: 860px){
+  .toc{ grid-template-columns: repeat(2, 1fr); }
+
+  /* превью остаётся 2 колонки, но всё компактнее */
+  .previewGrid{ gap: 10px; }
+  .miniCard{
+    grid-template-columns: 105px 1fr;
+    padding: 9px;
+    min-height: 92px;
+  }
+  .miniImg{ width: 105px; height: 76px; }
+}
+
+/* Phones */
+@media (max-width: 560px){
+  .page{ padding: 12px 10px 28px 10px; }
+
+  .toc{ gap: 10px; }
+  .tocBtn{ padding: 10px; min-height: 64px; }
+  .tocDots{ font-size: 1.45rem; }
+
+  /* ✅ На телефоне делаем 2 колонки превью (влезет больше) */
+  .previewGrid{
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  /* ✅ Карточка становится "плиткой": картинка сверху, текст снизу */
+  .miniCard{
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 9px;
+    min-height: auto;
+  }
+
+  .miniImg{
+    width: 100%;
+    height: 110px; /* меньше, чтобы больше карточек помещалось */
+    border-radius: 12px;
+  }
+
+  .miniTitle{
+    font-size: .98rem;
+  }
+
+  .miniDesc{
+    -webkit-line-clamp: 2;
+    font-size: .85rem;
+  }
+
+  /* модалка — компакт */
+  .modalBody{ padding: 12px; }
+  .modalCard{ grid-template-columns: 1fr; }
+  .modalImg{ width: 100%; height: 170px; }
+  .modalInfo{ padding: 10px 12px; }
+}
+
+/* Very small phones */
+@media (max-width: 380px){
+  /* всё ещё 2 колонки, но ещё компактнее */
+  .previewGrid{ gap: 8px; }
+
+  .miniImg{ height: 96px; }
+  .miniTitle{ font-size: .92rem; }
+  .miniDesc{ font-size: .82rem; }
+
+  .filterBtn{ padding: 7px 10px; font-size: .9rem; }
+}
