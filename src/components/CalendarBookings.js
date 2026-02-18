@@ -58,6 +58,9 @@ const saveSetToLS = (key, set) => {
   localStorage.setItem(key, JSON.stringify(Array.from(set)));
 };
 
+// cancelled helper
+const isCancelled = (b) => String(b?.status || '').toLowerCase() === 'cancelled';
+
 /* ================= Constants ================= */
 const LS_SEEN       = 'cb_seen_ids_v1';
 const LS_UNREAD     = 'cb_unread_ids_v1';
@@ -65,10 +68,15 @@ const LS_INIT_SEEN  = 'cb_seen_initialized_v1';
 
 /* ================= Component ================= */
 function CalendarBookings({ bookingsList, onDelete }) {
+  // ✅ Всегда работаем только с активными бронями (отменённые игнорируем)
+  const activeBookings = useMemo(() => {
+    return (bookingsList || []).filter(b => !isCancelled(b));
+  }, [bookingsList]);
+
   /* ---- 1) Производные данные по списку ---- */
   const bookingsByDay = useMemo(() => {
     const map = {};
-    (bookingsList || []).forEach((b) => {
+    activeBookings.forEach((b) => {
       const key = normalizeDayKey(b.date);
       if (!key) return;
       (map[key] ||= []).push(b);
@@ -77,16 +85,16 @@ function CalendarBookings({ bookingsList, onDelete }) {
       arr.sort((a, b) => (parseTimeToMinutes(a.time) ?? 0) - (parseTimeToMinutes(b.time) ?? 0))
     );
     return map;
-  }, [bookingsList]);
+  }, [activeBookings]);
 
   const idToDayKey = useMemo(() => {
     const m = {};
-    (bookingsList || []).forEach(b => {
+    activeBookings.forEach(b => {
       const k = normalizeDayKey(b.date);
       if (b?.id && k) m[b.id] = k;
     });
     return m;
-  }, [bookingsList]);
+  }, [activeBookings]);
 
   /* ---- 2) Неделя/дни ---- */
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -115,7 +123,7 @@ function CalendarBookings({ bookingsList, onDelete }) {
     if (!canGoPrev) return;
     const nextStart = addDays(viewStart, -7);
     setViewStart(nextStart);
-    setSelectedDayKey(toKey(nextStart));   // Пн той недели
+    setSelectedDayKey(toKey(nextStart));
   };
   const goNext = () => {
     const nextStart = addDays(viewStart, 7);
@@ -150,47 +158,55 @@ function CalendarBookings({ bookingsList, onDelete }) {
   useEffect(() => { setActiveSlot(null); }, [selectedDayKey]);
 
   /* ---- 4) Непрочитанные/прочитанные (persist на устройстве) ---- */
-  const [seenIds, setSeenIds]       = useState(() => readSetFromLS(LS_SEEN));
-  const [unreadIds, setUnreadIds]   = useState(() => readSetFromLS(LS_UNREAD));
-  const [initDone, setInitDone]     = useState(() => localStorage.getItem(LS_INIT_SEEN) === '1');
+  const [seenIds, setSeenIds]     = useState(() => readSetFromLS(LS_SEEN));
+  const [unreadIds, setUnreadIds] = useState(() => readSetFromLS(LS_UNREAD));
+  const [initDone, setInitDone]   = useState(() => localStorage.getItem(LS_INIT_SEEN) === '1');
 
-  // Первая инициализация: всё текущее считаем прочитанным
+  // Первая инициализация: всё текущее (активное) считаем прочитанным
   useEffect(() => {
     if (initDone) return;
-    if (!bookingsList || bookingsList.length === 0) return;
-    const all = new Set(bookingsList.map(b => b.id).filter(Boolean));
-    setSeenIds(all);           saveSetToLS(LS_SEEN, all);
-    const empty = new Set();   setUnreadIds(empty);  saveSetToLS(LS_UNREAD, empty);
+    if (!activeBookings || activeBookings.length === 0) return;
+    const all = new Set(activeBookings.map(b => b.id).filter(Boolean));
+    setSeenIds(all);         saveSetToLS(LS_SEEN, all);
+    const empty = new Set(); setUnreadIds(empty); saveSetToLS(LS_UNREAD, empty);
     localStorage.setItem(LS_INIT_SEEN, '1');
     setInitDone(true);
-  }, [bookingsList, initDone]);
+  }, [activeBookings, initDone]);
 
-  // Новые брони -> в unread (если их id ещё не видели)
+  // Новые активные брони -> в unread (если их id ещё не видели)
   useEffect(() => {
     if (!initDone) return;
     const curSeen = readSetFromLS(LS_SEEN);
     const curUnread = readSetFromLS(LS_UNREAD);
-    (bookingsList || []).forEach(b => {
+
+    activeBookings.forEach(b => {
       if (!b?.id) return;
       if (!curSeen.has(b.id) && !curUnread.has(b.id)) curUnread.add(b.id);
     });
+
     setUnreadIds(curUnread);
     saveSetToLS(LS_UNREAD, curUnread);
-  }, [bookingsList, initDone]);
+  }, [activeBookings, initDone]);
 
-  // Чистим unread, если бронь удалили
+  // ✅ Чистим unread/seen, если бронь удалили ИЛИ отменили (теперь её нет в activeBookings)
   useEffect(() => {
-    const present = new Set((bookingsList || []).map(b => b.id).filter(Boolean));
+    const present = new Set(activeBookings.map(b => b.id).filter(Boolean));
+
     const nextUnread = new Set([...unreadIds].filter(id => present.has(id)));
     if (nextUnread.size !== unreadIds.size) {
       setUnreadIds(nextUnread);
       saveSetToLS(LS_UNREAD, nextUnread);
     }
-  }, [bookingsList]); // намеренно только от списка
+
+    const nextSeen = new Set([...seenIds].filter(id => present.has(id)));
+    if (nextSeen.size !== seenIds.size) {
+      setSeenIds(nextSeen);
+      saveSetToLS(LS_SEEN, nextSeen);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBookings]); // намеренно от activeBookings
 
   /* ---- 4.1) По-слотные индикаторы ---- */
-
-  // Пометить КОНКРЕТНЫЙ слот как прочитанный
   const markSlotRead = (slot) => {
     const idsInSlot = (timeMap[slot] || []).map(b => b.id).filter(Boolean);
     if (!idsInSlot.length) return;
@@ -218,6 +234,7 @@ function CalendarBookings({ bookingsList, onDelete }) {
   // Красные точки на стрелках (если непрочитанные вне текущей недели)
   const startKey = toKey(viewStart);
   const endKey   = toKey(addDays(viewStart, 6));
+
   const hasUnreadLeft = useMemo(() => {
     let flag = false;
     unreadIds.forEach(id => {
@@ -274,7 +291,6 @@ function CalendarBookings({ bookingsList, onDelete }) {
               >
                 <div className="cal-daynum">{formatRuDayShort(cell.date)}</div>
                 {cell.cnt > 0 && <div className="cal-badge">{cell.cnt}</div>}
-                {/* Больше НЕ показываем красную точку на дне — индикаторы теперь по слотам */}
               </button>
             );
           })}
@@ -299,7 +315,7 @@ function CalendarBookings({ bookingsList, onDelete }) {
               onClick={() => {
                 if (count > 0) {
                   setActiveSlot(isActive ? null : slot);
-                  markSlotRead(slot); // ← помечаем только этот слот прочитанным
+                  markSlotRead(slot);
                 }
               }}
               disabled={count === 0}

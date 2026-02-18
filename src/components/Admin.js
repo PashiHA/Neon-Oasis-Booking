@@ -1,4 +1,4 @@
-// src/components/Admin.js — robust + drinks as collapsible tiles (shipment & sale carts) + AUTOSIM (sim1)
+// src/components/Admin.js — fixed bookings(cancelled) + fixed drinks stock logic (atomic batch TX)
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './Admin.css';
 import { db } from '../firebase';
@@ -29,16 +29,16 @@ const INITIAL_STATUSES = {
 
 // Каталог напитков и цены (MDL)
 const DRINKS = {
-  cola_05: { name: 'Coca‑Cola 0.5 l', price: 16 },
+  cola_05: { name: 'Coca-Cola 0.5 l', price: 16 },
   fanta_05: { name: 'Fanta 0.5 l', price: 16 },
   sprite_05: { name: 'Sprite 0.5 l', price: 16 },
   schweppes_033: { name: 'Schweppes 0.33 l', price: 16 },
   dorna_05: { name: 'Dorna 0.5 l', price: 14 },
   frunzea_05: { name: 'Ceai Frunzea 0.5 l', price: 20 },
   cappy_02: { name: 'Cappy 0.2 l', price: 13 },
-  monster_05:{name:'Monster 0.5 l', price: 30},
-  burn_0250:{name: 'Burn 0.25 l', price: 25},
-  cola_033: { name: 'Coca‑Cola 0.33 l', price: 13 },
+  monster_05: { name: 'Monster 0.5 l', price: 30 },
+  burn_0250: { name: 'Burn 0.25 l', price: 25 },
+  cola_033: { name: 'Coca-Cola 0.33 l', price: 13 },
   fanta_033: { name: 'Fanta 0.33 l', price: 13 },
   sprite_033: { name: 'Sprite 0.33 l', price: 13 },
 };
@@ -53,7 +53,13 @@ const getLocalDayKeyFromTs = (ts) => {
 };
 
 const serviceCategory = (key) =>
-  key.startsWith('vr') ? 'vr' : key.startsWith('ps') ? 'ps' : key.startsWith('billiard') ? 'billiard' : (key.startsWith('sim') || key.startsWith('autosim')) ? 'sim' : 'other';
+  key.startsWith('vr') ? 'vr'
+    : key.startsWith('ps') ? 'ps'
+      : key.startsWith('billiard') ? 'billiard'
+        : (key.startsWith('sim') || key.startsWith('autosim')) ? 'sim'
+          : 'other';
+
+const isCancelledBooking = (b) => String(b?.status || '').toLowerCase() === 'cancelled';
 
 // -------------------- Component --------------------
 export default function Admin() {
@@ -63,10 +69,12 @@ export default function Admin() {
   const [hours, setHours] = useState(0);
   const [minutes, setMinutes] = useState(30);
   const [dailyStats, setDailyStats] = useState({ vr: 0, ps: 0, billiard: 0, sim: 0, revenueMDL: 0 });
-  const [bookingsList, setBookingsList] = useState([]);
+
+  // bookings: храним все + отдельно видимые (без cancelled)
+  const [bookingsAll, setBookingsAll] = useState([]);
   const [logs, setLogs] = useState([]);
 
-  // Напитки: склад + корзины (плитки)
+  // Напитки: склад + корзины
   const [drinkStock, setDrinkStock] = useState({}); // { sku: number }
   const [shipmentCart, setShipmentCart] = useState({}); // { sku: qty }
   const [saleCart, setSaleCart] = useState({}); // { sku: qty }
@@ -80,13 +88,16 @@ export default function Admin() {
   const [serverOffset, setServerOffset] = useState(0);
   const serverNow = useMemo(() => () => Date.now() + serverOffset, [serverOffset]);
 
-  // Day key derived from (approx.) server time, auto-updates each minute
+  // Day key derived from server time, auto-updates
   const [todayKey, setTodayKey] = useState(() => getLocalDayKeyFromTs(Date.now()));
+
+  // -------------------- server offset --------------------
   useEffect(() => {
     const offRef = ref(db, '.info/serverTimeOffset');
     const unsub = onValue(offRef, (snap) => setServerOffset(snap.val() || 0));
     return () => unsub();
   }, []);
+
   useEffect(() => {
     const tick = () => setTodayKey(getLocalDayKeyFromTs(serverNow()));
     const id = setInterval(tick, 60_000);
@@ -113,7 +124,7 @@ export default function Admin() {
     return () => unsub();
   }, [todayKey]);
 
-  // -------------------- Statuses: subscribe + audit --------------------
+  // -------------------- Statuses subscribe + audit --------------------
   const prevStatusesRef = useRef(INITIAL_STATUSES);
 
   useEffect(() => {
@@ -123,7 +134,7 @@ export default function Admin() {
       const data = snap.val() || {};
       const merged = { ...INITIAL_STATUSES, ...data };
 
-      // Аудит неожиданных сбросов (без причины/updatedBy и до срока)
+      // Audit unexpected resets
       const nowTs = serverNow();
       const prev = prevStatusesRef.current || {};
       Object.entries(merged).forEach(([k, v]) => {
@@ -152,18 +163,22 @@ export default function Admin() {
     return () => unsub();
   }, [todayKey]);
 
-  // -------------------- Bookings: list + log new --------------------
+  // -------------------- Bookings: subscribe --------------------
   useEffect(() => {
     const bookingsRef = ref(db, 'bookings');
 
+    // список — берём ВСЕ, но ниже в UI показываем без cancelled
     const unsubList = onValue(bookingsRef, (snap) => {
       const data = snap.val() || {};
       const list = Object.entries(data).map(([id, entry]) => ({ id, ...entry }));
-      setBookingsList(list);
+      setBookingsAll(list);
     });
 
+    // логируем только реальные новые брони, не cancelled
     const unsubChild = onChildAdded(bookingsRef, (snap) => {
       const b = snap.val();
+      if (!b) return;
+      if (isCancelledBooking(b)) return;
       addLog(`Новое бронирование: ${b.name}, ${b.service}, ${b.date} в ${b.time}`);
     });
 
@@ -172,6 +187,12 @@ export default function Admin() {
       unsubChild();
     };
   }, []);
+
+  // ✅ показываем в админке/календаре только активные (не cancelled)
+  const bookingsVisible = useMemo(
+    () => bookingsAll.filter((b) => !isCancelledBooking(b)),
+    [bookingsAll]
+  );
 
   // -------------------- Drinks: stock subscribe --------------------
   useEffect(() => {
@@ -183,7 +204,7 @@ export default function Admin() {
     return () => unsub();
   }, []);
 
-  // -------------------- Transactions --------------------
+  // -------------------- Status TX helpers --------------------
   const newLeaseId = () => (crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
   const resetStatusTx = async (key, reason = 'system-auto') => {
@@ -236,7 +257,7 @@ export default function Admin() {
             updatedAt: serverTimestamp()
           };
         }
-        return curr; // кто-то уже занял — не перетираем
+        return curr;
       });
 
       const committed = res?.committed;
@@ -276,33 +297,70 @@ export default function Admin() {
     setMinutes(30);
   };
 
-  // -------------------- Drinks helpers --------------------
+  // -------------------- Drinks helpers (stable carts) --------------------
   const setCartQty = (setter) => (sku, qty) => {
     const q = Math.max(0, Math.floor(Number(qty) || 0));
     setter((prev) => {
-      const copy = { ...prev };
-      if (q === 0) delete copy[sku]; else copy[sku] = q;
-      return copy;
+      const next = { ...prev };
+      if (q === 0) delete next[sku];
+      else next[sku] = q;
+      return next;
     });
   };
-  const incCart = (setter) => (sku, step = 1) => setCartQty(setter)(sku, (setter === setShipmentCart ? (shipmentCart[sku]||0) : (saleCart[sku]||0)) + step);
-  const decCart = (setter) => (sku, step = 1) => setCartQty(setter)(sku, (setter === setShipmentCart ? (shipmentCart[sku]||0) : (saleCart[sku]||0)) - step);
 
-  const shipmentCount = Object.values(shipmentCart).reduce((a,b) => a + b, 0);
-  const saleCount = Object.values(saleCart).reduce((a,b) => a + b, 0);
-  const saleTotal = Object.entries(saleCart).reduce((sum, [sku, qty]) => sum + ((DRINKS[sku]?.price || 0) * qty), 0);
-  const saleInsufficient = Object.entries(saleCart).some(([sku, qty]) => (Number(drinkStock?.[sku] || 0) < qty));
+  const incCart = (setter) => (sku, step = 1) => {
+    setter((prev) => {
+      const cur = Number(prev[sku] || 0);
+      const nextQty = Math.max(0, cur + step);
+      const next = { ...prev };
+      if (nextQty === 0) delete next[sku];
+      else next[sku] = nextQty;
+      return next;
+    });
+  };
 
-  // TX to adjust stock for a single SKU
-  const adjustStockTx = async (sku, delta) => {
+  const decCart = (setter) => (sku, step = 1) => {
+    setter((prev) => {
+      const cur = Number(prev[sku] || 0);
+      const nextQty = Math.max(0, cur - step);
+      const next = { ...prev };
+      if (nextQty === 0) delete next[sku];
+      else next[sku] = nextQty;
+      return next;
+    });
+  };
+
+  const shipmentCount = useMemo(() => Object.values(shipmentCart).reduce((a, b) => a + b, 0), [shipmentCart]);
+  const saleCount = useMemo(() => Object.values(saleCart).reduce((a, b) => a + b, 0), [saleCart]);
+
+  const saleTotal = useMemo(() => {
+    return Object.entries(saleCart).reduce((sum, [sku, qty]) => sum + ((DRINKS[sku]?.price || 0) * qty), 0);
+  }, [saleCart]);
+
+  const saleInsufficient = useMemo(() => {
+    return Object.entries(saleCart).some(([sku, qty]) => (Number(drinkStock?.[sku] || 0) < qty));
+  }, [saleCart, drinkStock]);
+
+  // ✅ Атомарная батч-транзакция по всему складу (all-or-nothing)
+  // deltaMap: { sku: +qty } или { sku: -qty }
+  const batchAdjustStockTx = async (deltaMap) => {
+    const stockRef = ref(db, 'drinks/stock');
     try {
-      const res = await runTransaction(ref(db, `drinks/stock/${sku}`), (cur) => {
-        const current = Number(cur) || 0;
-        const next = current + delta;
-        if (next < 0) return; // abort if not enough stock
-        return next;
+      const res = await runTransaction(stockRef, (cur) => {
+        const currentStock = cur && typeof cur === 'object' ? { ...cur } : {};
+
+        // сначала считаем "предварительно"
+        for (const [sku, delta] of Object.entries(deltaMap)) {
+          const curQty = Number(currentStock[sku] || 0);
+          const nextQty = curQty + Number(delta || 0);
+          if (nextQty < 0) return; // abort
+          currentStock[sku] = nextQty;
+        }
+
+        return currentStock;
       });
-      return { ok: !!res?.committed, value: res?.snapshot?.val() };
+
+      return { ok: !!res?.committed, stock: res?.snapshot?.val() || {} };
     } catch (e) {
       console.error(e);
       return { ok: false, error: e };
@@ -310,23 +368,30 @@ export default function Admin() {
   };
 
   const addShipmentAll = async () => {
-    const entries = Object.entries(shipmentCart).filter(([,q]) => q > 0);
+    const entries = Object.entries(shipmentCart).filter(([, q]) => q > 0);
     if (!entries.length) return;
+
+    setUiMsg('');
     try {
+      // deltaMap для поступления
+      const deltaMap = Object.fromEntries(entries.map(([sku, qty]) => [sku, +qty]));
+      const tx = await batchAdjustStockTx(deltaMap);
+
+      if (!tx.ok) {
+        setUiMsg('Ошибка: поступление не применено (конфликт/ошибка транзакции).');
+        return;
+      }
+
+      // Логи после успешной транзакции
       for (const [sku, qty] of entries) {
         const drink = DRINKS[sku];
-        const res = await adjustStockTx(sku, qty);
-        if (res.ok) {
-          const remaining = Number(res.value) || 0;
-          await addLog(`Поступление напитков: ${drink.name} × ${qty} (остаток: ${remaining})`);
-        } else {
-          setUiMsg(`Ошибка поступления для ${DRINKS[sku]?.name || sku}`);
-          return;
-        }
+        const remaining = Number(tx.stock?.[sku] || 0);
+        await addLog(`Поступление напитков: ${drink.name} × ${qty} (остаток: ${remaining})`);
       }
+
       setShipmentCart({});
-      setUiMsg(`Поступление добавлено: ${entries.length} поз., всего ${shipmentCount} шт.`);
       setShowShipment(false);
+      setUiMsg(`Поступление добавлено: ${entries.length} поз., всего ${entries.reduce((s,[,q])=>s+q,0)} шт.`);
     } catch (e) {
       console.error(e);
       setUiMsg('Ошибка при добавлении поступления');
@@ -334,42 +399,59 @@ export default function Admin() {
   };
 
   const sellAll = async () => {
-    const entries = Object.entries(saleCart).filter(([,q]) => q > 0);
+    const entries = Object.entries(saleCart).filter(([, q]) => q > 0);
     if (!entries.length) return;
 
-    // Предпроверка остатков
+    setUiMsg('');
+
+    // Быстрая пред-проверка (UI)
     if (entries.some(([sku, qty]) => (Number(drinkStock?.[sku] || 0) < qty))) {
       setUiMsg('Недостаточно на складе для выбранных позиций');
       return;
     }
 
     try {
-      const totalSum = entries.reduce((s,[sku,qty]) => s + ((DRINKS[sku]?.price||0)*qty), 0);
+      const totalSum = entries.reduce((s, [sku, qty]) => s + ((DRINKS[sku]?.price || 0) * qty), 0);
+
+      // deltaMap для продажи (минус)
+      const deltaMap = Object.fromEntries(entries.map(([sku, qty]) => [sku, -qty]));
+      const tx = await batchAdjustStockTx(deltaMap);
+
+      if (!tx.ok) {
+        setUiMsg('Продажа не применена (конфликт: кто-то уже купил/остаток изменился). Попробуй ещё раз.');
+        return;
+      }
+
+      // Запись продаж и логов (после успешного списания)
       for (const [sku, qty] of entries) {
         const drink = DRINKS[sku];
-        const res = await adjustStockTx(sku, -qty);
-        if (!res.ok) {
-          setUiMsg(`Продажа прервана: нехватка/конфликт для ${drink?.name || sku}`);
-          return;
-        }
-        const remaining = Number(res.value) || 0;
+        const remaining = Number(tx.stock?.[sku] || 0);
+
         await push(ref(db, `sales/${todayKey}/drinks`), {
-          ts: serverNow(), sku, name: drink.name, qty, price: drink.price,
+          ts: serverNow(),
+          sku,
+          name: drink.name,
+          qty,
+          price: drink.price,
           total: drink.price * qty
         });
+
         await addLog(`Продажа: ${drink.name} × ${qty} = ${drink.price * qty} MDL (остаток: ${remaining})`);
       }
+
+      // Выручка
       await runTransaction(ref(db, `dailyStats/${todayKey}/revenueMDL`), (cur) => (cur || 0) + totalSum);
+
       setSaleCart({});
-      setUiMsg(`Продано: ${entries.length} поз. / ${saleCount} шт. На сумму ${totalSum} MDL`);
       setShowSale(false);
+      setUiMsg(`Продано: ${entries.length} поз. / ${entries.reduce((s,[,q])=>s+q,0)} шт. На сумму ${totalSum} MDL`);
     } catch (e) {
       console.error(e);
       setUiMsg('Ошибка при продаже');
     }
   };
 
-  // -------------------- Sweeper: периодическая проверка истёкших броней --------------------
+  // -------------------- Sweeper: check expired statuses --------------------
   useEffect(() => {
     const id = setInterval(() => {
       Object.entries(statuses).forEach(([key, val]) => {
@@ -409,172 +491,189 @@ export default function Admin() {
   return (
     <div className="admin-panel">
       <button className='button-log' onClick={downloadLog}>Скачать статистику</button>
+
       <div className="row row-top">
-      <div className="stats-display">
-        <p>Дата: {todayKey}</p>
-        <p>
-          VR: {`${Math.floor(dailyStats.vr / 3_600_000)} ч ${Math.floor((dailyStats.vr % 3_600_000) / 60_000)} мин`}
-        </p>
-        <p>
-          PlayStation: {`${Math.floor(dailyStats.ps / 3_600_000)} ч ${Math.floor((dailyStats.ps % 3_600_000) / 60_000)} мин`}
-        </p>
-        <p>
-          Бильярд: {`${Math.floor(dailyStats.billiard / 3_600_000)} ч ${Math.floor((dailyStats.billiard % 3_600_000) / 60_000)} мин`}
-        </p>
-        <p>
-          Автосимулятор: {`${Math.floor(dailyStats.sim / 3_600_000)} ч ${Math.floor((dailyStats.sim % 3_600_000) / 60_000)} мин`}
-        </p>
-        <p>Выручка (напитки): {Number(dailyStats.revenueMDL || 0).toFixed(2)} MDL</p>
-      </div>
-
-{/* Календарь бронирований */}
-    <CalendarBookings
-      bookingsList={bookingsList}
-      onDelete={deleteBooking}
-    />
-    </div>
-     <div className="row row-bottom">
-      {/* Плитки статусов */}
-      <div className="admin-plates">
-        {Object.entries(statuses).map(([key, val]) => (
-          <div
-            key={key}
-            className={`admin-box ${val.status === 'Занято' ? 'busy' : 'free'}`}
-            onClick={() => setSelectedItem(key)}
-          >
-            <strong>{key.toUpperCase()}</strong>
-            <div>
-              {val.status}
-              {val.until && <small> до {new Date(val.until).toLocaleTimeString()}</small>}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Попап бронирования */}
-      {selectedItem && (
-        <div className="popup">
-          {statuses[selectedItem]?.status === 'Занято' ? (
-            <>
-              <h3>
-                {selectedItem.toUpperCase()} занят до {new Date(statuses[selectedItem].until).toLocaleTimeString()}
-              </h3>
-              <button onClick={resetBooking}>Сбросить</button>
-              <button onClick={() => setSelectedItem(null)}>Закрыть</button>
-            </>
-          ) : (
-            <>
-              <h3>Забронировать {selectedItem.toUpperCase()}</h3>
-              <label>
-                Часы:{' '}
-                <input
-                  type="number"
-                  value={hours}
-                  onChange={(e) => setHours(Math.max(0, Math.min(12, Number(e.target.value))))}
-                  min={0}
-                  max={12}
-                />
-              </label>
-              <label>
-                Минуты:{' '}
-                <input
-                  type="number"
-                  value={minutes}
-                  onChange={(e) => setMinutes(Math.max(0, Math.min(59, Number(e.target.value))))}
-                  min={0}
-                  max={59}
-                  step={15}
-                />
-              </label>
-              <button onClick={confirmBooking}>Подтвердить</button>
-              <button onClick={() => setSelectedItem(null)}>Отмена</button>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Напитки: сворачиваемые панели */}
-      <div className="drinks-section">
-        <h3>Напитки</h3>
-
-        <div className="drinks-forms">
-          {/* Поступление */}
-          <div className={`form-block panel ${showShipment ? '' : 'collapsed'}`}>
-            <div className="panel-head" onClick={() => setShowShipment((v) => !v)}>
-              <h4>Поступление</h4>
-              <button type="button" className="panel-toggle">{showShipment ? 'Свернуть' : 'Открыть'}</button>
-            </div>
-            <div className="panel-body">
-              <ul className="drinks-list">
-                {DRINK_KEYS.map((sku) => {
-                  const d = DRINKS[sku];
-                  const stock = Number(drinkStock?.[sku] || 0);
-                  const qty = shipmentCart[sku] || 0;
-                  return (
-                    <li key={sku} className={`drink-row ${qty > 0 ? 'selected' : ''}`} onClick={() => incCart(setShipmentCart)(sku, 1)}>
-                      <span className="drink-name">{d.name}</span>
-                      <span className="drink-price">{d.price} MDL</span>
-                      <span className="drink-stock">На складе: {stock}</span>
-                      <div className="qty-controls" onClick={(e) => e.stopPropagation()}>
-                        <button className='qty-controls-button' onClick={() => decCart(setShipmentCart)(sku, 1)}>-</button>
-                        <input
-                          type="number"
-                          min={0}
-                          value={qty}
-                          onChange={(e) => setCartQty(setShipmentCart)(sku, e.target.value)}
-                        />
-                        <button className='qty-controls-button' onClick={() => incCart(setShipmentCart)(sku, 1)}>+</button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-              <div className="sell-total">К добавлению: {shipmentCount} шт.</div>
-              <button onClick={addShipmentAll} disabled={shipmentCount === 0}>Добавить поступление</button>
-            </div>
-          </div>
-
-          {/* Продажа */}
-          <div className={`form-block panel ${showSale ? '' : 'collapsed'}`}>
-            <div className="panel-head" onClick={() => setShowSale((v) => !v)}>
-              <h4>Продажа</h4>
-              <button type="button" className="panel-toggle">{showSale ? 'Свернуть' : 'Открыть'}</button>
-            </div>
-            <div className="panel-body">
-              <ul className="drinks-list">
-                {DRINK_KEYS.map((sku) => {
-                  const d = DRINKS[sku];
-                  const stock = Number(drinkStock?.[sku] || 0);
-                  const qty = saleCart[sku] || 0;
-                  const over = qty > stock;
-                  return (
-                    <li key={sku} className={`drink-row ${qty > 0 ? 'selected' : ''}`} onClick={() => incCart(setSaleCart)(sku, 1)}>
-                      <span className="drink-name">{d.name}</span>
-                      <span className="drink-price">{d.price} MDL</span>
-                      <span className="drink-stock">На складе: {stock}</span>
-                      <div className="qty-controls" onClick={(e) => e.stopPropagation()}>
-                        <button className='qty-controls-button' onClick={() => decCart(setSaleCart)(sku, 1)}>-</button>
-                        <input
-                          type="number"
-                          min={0}
-                          value={qty}
-                          onChange={(e) => setCartQty(setSaleCart)(sku, e.target.value)}
-                        />
-                        <button className='qty-controls-button' onClick={() => incCart(setSaleCart)(sku, 1)}>+</button>
-                      </div>
-                      {over && <small className="stock-info">Недостаточно на складе</small>}
-                    </li>
-                  );
-                })}
-              </ul>
-              <div className="sell-total">К оплате: {saleTotal.toFixed(2)} MDL</div>
-              <button onClick={sellAll} disabled={saleCount === 0 || saleInsufficient} title={saleInsufficient ? 'Недостаточно на складе' : undefined}>Продать выбранное</button>
-            </div>
-          </div>
+        <div className="stats-display">
+          <p>Дата: {todayKey}</p>
+          <p>VR: {`${Math.floor(dailyStats.vr / 3_600_000)} ч ${Math.floor((dailyStats.vr % 3_600_000) / 60_000)} мин`}</p>
+          <p>PlayStation: {`${Math.floor(dailyStats.ps / 3_600_000)} ч ${Math.floor((dailyStats.ps % 3_600_000) / 60_000)} мин`}</p>
+          <p>Бильярд: {`${Math.floor(dailyStats.billiard / 3_600_000)} ч ${Math.floor((dailyStats.billiard % 3_600_000) / 60_000)} мин`}</p>
+          <p>Автосимулятор: {`${Math.floor(dailyStats.sim / 3_600_000)} ч ${Math.floor((dailyStats.sim % 3_600_000) / 60_000)} мин`}</p>
+          <p>Выручка (напитки): {Number(dailyStats.revenueMDL || 0).toFixed(2)} MDL</p>
         </div>
 
-        {uiMsg && <div className="ui-msg">{uiMsg}</div>}
+        {/* ✅ Календарь бронирований — передаём только не отменённые */}
+        <CalendarBookings
+          bookingsList={bookingsVisible}
+          onDelete={deleteBooking}
+        />
       </div>
+
+      <div className="row row-bottom">
+        {/* Плитки статусов */}
+        <div className="admin-plates">
+          {Object.entries(statuses).map(([key, val]) => (
+            <div
+              key={key}
+              className={`admin-box ${val.status === 'Занято' ? 'busy' : 'free'}`}
+              onClick={() => setSelectedItem(key)}
+            >
+              <strong>{key.toUpperCase()}</strong>
+              <div>
+                {val.status}
+                {val.until && <small> до {new Date(val.until).toLocaleTimeString()}</small>}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Попап бронирования */}
+        {selectedItem && (
+          <div className="popup">
+            {statuses[selectedItem]?.status === 'Занято' ? (
+              <>
+                <h3>
+                  {selectedItem.toUpperCase()} занят до {new Date(statuses[selectedItem].until).toLocaleTimeString()}
+                </h3>
+                <button onClick={resetBooking}>Сбросить</button>
+                <button onClick={() => setSelectedItem(null)}>Закрыть</button>
+              </>
+            ) : (
+              <>
+                <h3>Забронировать {selectedItem.toUpperCase()}</h3>
+                <label>
+                  Часы:{' '}
+                  <input
+                    type="number"
+                    value={hours}
+                    onChange={(e) => setHours(Math.max(0, Math.min(12, Number(e.target.value))))}
+                    min={0}
+                    max={12}
+                  />
+                </label>
+                <label>
+                  Минуты:{' '}
+                  <input
+                    type="number"
+                    value={minutes}
+                    onChange={(e) => setMinutes(Math.max(0, Math.min(59, Number(e.target.value))))}
+                    min={0}
+                    max={59}
+                    step={15}
+                  />
+                </label>
+                <button onClick={confirmBooking}>Подтвердить</button>
+                <button onClick={() => setSelectedItem(null)}>Отмена</button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Напитки */}
+        <div className="drinks-section">
+          <h3>Напитки</h3>
+
+          <div className="drinks-forms">
+            {/* Поступление */}
+            <div className={`form-block panel ${showShipment ? '' : 'collapsed'}`}>
+              <div className="panel-head" onClick={() => setShowShipment((v) => !v)}>
+                <h4>Поступление</h4>
+                <button type="button" className="panel-toggle">{showShipment ? 'Свернуть' : 'Открыть'}</button>
+              </div>
+
+              <div className="panel-body">
+                <ul className="drinks-list">
+                  {DRINK_KEYS.map((sku) => {
+                    const d = DRINKS[sku];
+                    const stock = Number(drinkStock?.[sku] || 0);
+                    const qty = shipmentCart[sku] || 0;
+
+                    return (
+                      <li
+                        key={sku}
+                        className={`drink-row ${qty > 0 ? 'selected' : ''}`}
+                        onClick={() => incCart(setShipmentCart)(sku, 1)}
+                      >
+                        <span className="drink-name">{d.name}</span>
+                        <span className="drink-price">{d.price} MDL</span>
+                        <span className="drink-stock">На складе: {stock}</span>
+
+                        <div className="qty-controls" onClick={(e) => e.stopPropagation()}>
+                          <button className='qty-controls-button' onClick={() => decCart(setShipmentCart)(sku, 1)}>-</button>
+                          <input
+                            type="number"
+                            min={0}
+                            value={qty}
+                            onChange={(e) => setCartQty(setShipmentCart)(sku, e.target.value)}
+                          />
+                          <button className='qty-controls-button' onClick={() => incCart(setShipmentCart)(sku, 1)}>+</button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className="sell-total">К добавлению: {shipmentCount} шт.</div>
+                <button onClick={addShipmentAll} disabled={shipmentCount === 0}>Добавить поступление</button>
+              </div>
+            </div>
+
+            {/* Продажа */}
+            <div className={`form-block panel ${showSale ? '' : 'collapsed'}`}>
+              <div className="panel-head" onClick={() => setShowSale((v) => !v)}>
+                <h4>Продажа</h4>
+                <button type="button" className="panel-toggle">{showSale ? 'Свернуть' : 'Открыть'}</button>
+              </div>
+
+              <div className="panel-body">
+                <ul className="drinks-list">
+                  {DRINK_KEYS.map((sku) => {
+                    const d = DRINKS[sku];
+                    const stock = Number(drinkStock?.[sku] || 0);
+                    const qty = saleCart[sku] || 0;
+                    const over = qty > stock;
+
+                    return (
+                      <li
+                        key={sku}
+                        className={`drink-row ${qty > 0 ? 'selected' : ''}`}
+                        onClick={() => incCart(setSaleCart)(sku, 1)}
+                      >
+                        <span className="drink-name">{d.name}</span>
+                        <span className="drink-price">{d.price} MDL</span>
+                        <span className="drink-stock">На складе: {stock}</span>
+
+                        <div className="qty-controls" onClick={(e) => e.stopPropagation()}>
+                          <button className='qty-controls-button' onClick={() => decCart(setSaleCart)(sku, 1)}>-</button>
+                          <input
+                            type="number"
+                            min={0}
+                            value={qty}
+                            onChange={(e) => setCartQty(setSaleCart)(sku, e.target.value)}
+                          />
+                          <button className='qty-controls-button' onClick={() => incCart(setSaleCart)(sku, 1)}>+</button>
+                        </div>
+
+                        {over && <small className="stock-info">Недостаточно на складе</small>}
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className="sell-total">К оплате: {saleTotal.toFixed(2)} MDL</div>
+                <button
+                  onClick={sellAll}
+                  disabled={saleCount === 0 || saleInsufficient}
+                  title={saleInsufficient ? 'Недостаточно на складе' : undefined}
+                >
+                  Продать выбранное
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {uiMsg && <div className="ui-msg">{uiMsg}</div>}
+        </div>
       </div>
     </div>
   );
