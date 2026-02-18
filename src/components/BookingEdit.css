@@ -1,0 +1,288 @@
+/* src/components/BookingEdit.css */
+/* Neon Oasis — Booking Edit (edit/cancel) */
+
+:root{
+  --neo-cyan: rgba(0,229,255,.9);
+  --neo-pink: rgba(255,0,255,.9);
+  --neo-violet: rgba(161,0,255,.9);
+  --panel: rgba(0,0,0,.55);
+  --panel2: rgba(0,0,0,.38);
+  --line: rgba(255,0,255,.22);
+  --line2: rgba(0,229,255,.20);
+  --text: rgba(255,255,255,.95);
+  --muted: rgba(255,255,255,.78);
+  --shadow: 0 0 22px rgba(0,0,0,.35);
+}
+
+.bookingedit-wrap{
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 18px 14px 34px;
+  color: var(--text);
+}
+
+.bookingedit-card{
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 22px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+}
+
+.bookingedit-head{
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.bookingedit-title{
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 900;
+  letter-spacing: .2px;
+  text-shadow: 0 0 18px rgba(255,0,255,.18);
+}
+
+.bookingedit-subtitle{
+  margin: 8px 0 0 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.badge{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: .95rem;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.35);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.badge.ok{
+  border-color: rgba(0,229,255,.35);
+  box-shadow: 0 0 0 2px rgba(0,229,255,.08);
+}
+.badge.warn{
+  border-color: rgba(255,44,120,.40);
+  box-shadow: 0 0 0 2px rgba(255,44,120,.10);
+}
+.badge.cancelled{
+  opacity: .8;
+  border-color: rgba(255,255,255,.18);
+}
+
+.bookingedit-grid{
+  display: grid;
+  grid-template-columns: 1.1fr .9fr;
+  gap: 14px;
+}
+
+.panel{
+  border: 1px solid rgba(0,229,255,.18);
+  background: var(--panel2);
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.panel h4{
+  margin: 0 0 10px 0;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.meta{
+  display: grid;
+  gap: 10px;
+}
+
+.meta-row{
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.meta-key{
+  color: rgba(255,255,255,.72);
+  font-weight: 800;
+  font-size: .95rem;
+}
+
+.meta-val{
+  color: rgba(255,255,255,.95);
+  font-weight: 800;
+  font-size: .98rem;
+  overflow-wrap: anywhere;
+}
+
+.hr{
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,0,255,.26), rgba(0,229,255,.22), transparent);
+  margin: 12px 0;
+}
+
+/* form */
+.bookingedit-form{
+  display: grid;
+  gap: 12px;
+}
+
+.field{
+  display: grid;
+  gap: 6px;
+}
+
+.field label{
+  font-weight: 900;
+  font-size: .95rem;
+  color: rgba(255,255,255,.86);
+}
+
+.input, .select{
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(255,0,255,.22);
+  background: rgba(0,0,0,.42);
+  color: #fff;
+  padding: 11px 12px;
+  outline: none;
+  font-weight: 800;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .12s ease;
+}
+
+.input:focus, .select:focus{
+  border-color: rgba(0,229,255,.38);
+  box-shadow: 0 0 0 3px rgba(0,229,255,.10);
+}
+
+.row2{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.hint{
+  color: rgba(255,255,255,.70);
+  font-size: .92rem;
+  line-height: 1.35;
+}
+
+/* buttons */
+.actions{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.btn{
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.35);
+  color: #fff;
+  border-radius: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 900;
+  letter-spacing: .2px;
+  transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease, opacity .12s ease;
+  user-select: none;
+}
+
+.btn:hover{
+  transform: translateY(-1px);
+  border-color: rgba(0,229,255,.28);
+  box-shadow: 0 0 18px rgba(0,229,255,.10);
+}
+
+.btn:disabled{
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn.primary{
+  border-color: rgba(0,229,255,.35);
+  background: linear-gradient(180deg, rgba(0,229,255,.20), rgba(0,0,0,.35));
+}
+.btn.primary:hover{
+  border-color: rgba(255,0,255,.28);
+  box-shadow: 0 0 18px rgba(255,0,255,.10);
+}
+
+.btn.danger{
+  border-color: rgba(255,44,120,.40);
+  background: linear-gradient(180deg, rgba(255,44,120,.18), rgba(0,0,0,.35));
+}
+.btn.danger:hover{
+  border-color: rgba(255,44,120,.55);
+  box-shadow: 0 0 18px rgba(255,44,120,.12);
+}
+
+.msg{
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-weight: 900;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.35);
+}
+
+.msg.ok{
+  border-color: rgba(0,229,255,.30);
+  box-shadow: 0 0 0 2px rgba(0,229,255,.08);
+}
+.msg.err{
+  border-color: rgba(255,44,120,.38);
+  box-shadow: 0 0 0 2px rgba(255,44,120,.10);
+}
+
+/* loading */
+.skeleton{
+  border: 1px dashed rgba(255,255,255,.18);
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(0,0,0,.25);
+  color: rgba(255,255,255,.75);
+}
+
+.small{
+  font-size: .9rem;
+  opacity: .85;
+}
+
+/* ================= Responsive ================= */
+@media (max-width: 900px){
+  .bookingedit-grid{
+    grid-template-columns: 1fr;
+  }
+  .bookingedit-head{
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 520px){
+  .bookingedit-wrap{ padding: 14px 10px 28px; }
+  .bookingedit-card{ padding: 14px; border-radius: 18px; }
+  .bookingedit-title{ font-size: 1.45rem; }
+  .row2{ grid-template-columns: 1fr; }
+  .meta-row{ grid-template-columns: 110px 1fr; }
+  .btn{ width: 100%; justify-content: center; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .btn, .input, .select{ transition: none; }
+}

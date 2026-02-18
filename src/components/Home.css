@@ -367,7 +367,7 @@
     margin-top: 6.5rem;
   }
   .pc-row{
-  width: 57rem;
+  width: 50rem;
   display: flex;
   justify-content: center;
   gap: 1rem;
@@ -562,8 +562,41 @@
     .section-title {
       font-size: 1.1rem;
     }
+    .pc-row{
+    width: 35rem;}
   }
   
-  /* ===== ПК (ряд ниже схемы) ===== */
+  @media (max-width: 480px) {
+        .ps1, .ps2 {
+        width: 10.5rem;
+        height: 10.5rem;
+    }
+    .ps1{
+      right: 2rem;
+    }
+    .ps2 {
+        bottom: -5rem;
+        left: 2.5rem;
+    }
+    .autosim1, .autosim2 {
+        width: 11.5rem;
+        height: 6.5rem;
+    }
+    .autosim1{
+        left: 13.5rem;
+        bottom: 15rem;
+    }
+        .autosim2 {
+          top: 28rem;
+        right: 14rem;
+      }
+    .billiard1, .billiard2 {
+        width: 8rem;
+        height: 13rem;
+  }
+      .billiard1 {
+        left: 3rem;
+      }
+}
 
   

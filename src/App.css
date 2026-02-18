@@ -19,9 +19,7 @@
 
 *,
 *::before,
-*::after{
-  box-sizing: border-box;
-}
+*::after{ box-sizing: border-box; }
 
 html, body{
   height: 100%;
@@ -29,9 +27,7 @@ html, body{
   padding: 0;
 }
 
-html{
-  scroll-behavior: smooth; /* плавные якоря */
-}
+html{ scroll-behavior: smooth; }
 
 body{
   font-family: 'Exo 2', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -48,7 +44,7 @@ body{
 .site-bg{
   position: relative;
   min-height: 100vh;
-  isolation: isolate; /* чтобы эффекты не ломали UI */
+  isolation: isolate;
 
   background-image: url('./img/baground.png');
   background-size: cover;
@@ -56,18 +52,13 @@ body{
   background-position: center;
   background-attachment: scroll;
 
-  /* слегка сглаживает "ощущение" скролла */
   overflow: clip;
 }
 
-/* ✅ fixed включаем только на десктопе (обычно без лагов) */
 @media (min-width: 1024px){
-  .site-bg{
-    background-attachment: fixed;
-  }
+  .site-bg{ background-attachment: fixed; }
 }
 
-/* ✅ Лёгкий неон в 2 слоя: transform (GPU) + opacity */
 .site-bg::before,
 .site-bg::after{
   content:"";
@@ -80,10 +71,7 @@ body{
   transform: translate3d(0,0,0);
   backface-visibility: hidden;
 
-  /* screen красиво, но может быть дороже.
-     если хочешь максимальный FPS — поставь normal */
   mix-blend-mode: screen;
-
   opacity: .28;
 }
 
@@ -144,7 +132,6 @@ header{
   top: 0;
   z-index: 50;
 
-  /* лёгкая подложка, чтобы текст читался */
   background: linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,.18));
   backdrop-filter: blur(6px);
 }
@@ -168,7 +155,7 @@ header img{
 .desktop-nav{
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-around;
   gap: clamp(10px, 2vw, 22px);
 }
 
@@ -199,7 +186,6 @@ header img{
   max-width: 1100px;
   margin: 0 auto;
 
-  /* оптимизация отрисовки крупных блоков */
   content-visibility: auto;
   contain-intrinsic-size: 1px 500px;
 }
@@ -315,9 +301,7 @@ header img{
   text-shadow: none;
 }
 
-.mobile-nav .link:last-child{
-  border-bottom: none;
-}
+.mobile-nav .link:last-child{ border-bottom: none; }
 
 .mobile-nav.active{
   max-height: 60vh;
@@ -325,56 +309,160 @@ header img{
 }
 
 /* =========================
-   FOOTER
+   FOOTER — ВСЕГДА ГОРИЗОНТАЛЬНО (ONE LINE)
+   Требования:
+   ✅ никогда не становится колонкой
+   ✅ на телефоне подписи соцсетей скрываются (только иконки)
+   ✅ адрес/телефон выделить жирнее + переливающийся цвет (без подчёркивания)
 ========================= */
-footer{
+
+/* Обертка футера */
+.footer{
   margin-top: 30px;
-  padding: clamp(16px, 3vw, 28px);
+  padding: clamp(10px, 2vw, 18px) clamp(12px, 2.6vw, 26px);
+
   display: flex;
   align-items: center;
-  justify-content: space-around;
-  gap: 18px;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: clamp(8px, 1.4vw, 16px);
+
+  flex-wrap: nowrap;      /* ✅ всегда одна линия */
+  white-space: nowrap;    /* ✅ не переносим внутрь */
+  overflow: hidden;       /* ✅ не ломаем верстку */
 
   background: rgba(22,23,24,.78);
   border-top: 1px solid rgba(255,255,255,.06);
 }
 
-footer > img{
-  width: clamp(8rem, 14vw, 140px);
+/* Лого */
+.footer > img{
+  width: clamp(68px, 9vw, 140px);
   height: auto;
   display: block;
+  flex: 0 0 auto;
 }
 
-.footer-media{
+/* Контакты — компактно, в линию */
+.footer-info{
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
   display: flex;
-  gap: 16px;
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
+  gap: clamp(10px, 1.2vw, 18px);
+
+  padding: clamp(6px, .8vw, 10px) clamp(8px, 1vw, 12px);
+  border-radius: 14px;
+
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(0,229,255,.14);
+  box-shadow: 0 0 18px rgba(0,0,0,.18);
 }
 
-.footer-media a{
+.footer-line{
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Метка (Адрес/Телефон) */
+.footer-label{
+  font-weight: 900;
+  opacity: .9;
+  font-size: clamp(.9rem, .35vw + .74rem, 1.05rem);
+}
+
+/* ✅ Значение: жирно + перелив (без underline) */
+.footer-link{
   text-decoration: none;
-  font-size: 1.8rem;
-  color: #fff;
-  transition: filter .2s ease, transform .2s ease, opacity .2s ease;
+  font-weight: 1000;
+  font-size: clamp(1rem, .45vw + .84rem, 1.16rem);
+  font-size: 1.5rem;
+  /* перелив */
+  background: linear-gradient(90deg,
+    #00e5ff,
+    #ff00ff,
+    #a100ff,
+    #00e5ff
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+
+  /* лёгкое свечение */
+  filter: drop-shadow(0 0 10px rgba(0,229,255,.10));
+
+  /* чтобы не разрывало строку */
+  max-width: 34ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  transition: filter .2s ease, opacity .2s ease;
+  animation: footer-shimmer 6s linear infinite;
+}
+
+.footer-link:hover{
+  filter:
+    drop-shadow(0 0 10px rgba(255,0,255,.20))
+    drop-shadow(0 0 14px rgba(0,229,255,.14));
+  opacity: .95;
+}
+
+@keyframes footer-shimmer{
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 220% 50%; }
+}
+
+/* Соцсети справа */
+.footer-media{
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: clamp(8px, 1vw, 14px);
+}
+
+/* Ссылка соцсети */
+.media-link{
   display: inline-flex;
   align-items: center;
   gap: 8px;
+
+  padding: clamp(6px, .9vw, 10px) clamp(7px, 1vw, 12px);
+  border-radius: 14px;
+
+  background: rgba(0,0,0,.20);
+  border: 1px solid rgba(255,255,255,.08);
+
+  text-decoration: none;
+  color: #fff;
+
+  transition: transform .18s ease, filter .18s ease, border-color .18s ease, background .18s ease;
 }
 
-.footer-media a:hover{
+.media-link:hover{
   transform: translateY(-1px);
+  border-color: rgba(0,229,255,.20);
+  background: rgba(0,0,0,.28);
   filter:
     drop-shadow(0 0 4px #fff)
-    drop-shadow(0 0 10px rgba(255,0,255,.55))
-    drop-shadow(0 0 18px rgba(255,0,255,.35));
+    drop-shadow(0 0 10px rgba(255,0,255,.40))
+    drop-shadow(0 0 16px rgba(255,0,255,.22));
 }
 
+.icon{
+  font-size: clamp(1.25rem, 1.2vw, 1.75rem);
+  line-height: 1;
+}
+
+/* Подпись (на телефоне уберем) */
 .media-label{
-  font-size: 1rem;
-  opacity: .9;
+  font-size: clamp(.9rem, .35vw + .72rem, 1rem);
+  font-weight: 900;
+  opacity: .92;
 }
 
 /* =========================
@@ -393,16 +481,23 @@ footer > img{
   50%      { opacity: .52; }
 }
 
-/* =========================
-   RESPONSIVE
-========================= */
+@media (max-width: 1050px){
+  .footer-link{
+    font-size: 1rem;
+  }
+}
+@media (max-width: 860px){
+  .footer-link{
+    font-size: 0.85rem;
+  }
+}
 @media (max-width: 768px){
   .desktop-nav{ display: none; }
   .hamburger{ display: flex; }
 
   header{
-    justify-content: space-between;
-    padding: 2rem 3rem;
+    justify-content: space-around;
+    padding: 1rem 1.2rem;
   }
 
   .status-item{
@@ -414,15 +509,48 @@ footer > img{
     width: 100%;
     text-align: center;
   }
+
+  /* футер: чуть компактнее */
+  .footer{
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .footer-link{ max-width: 100%;
+  font-size: 0.85rem; }
 }
 
-@media (max-width: 480px){
-  .footer-media a{
-    font-size: 1.6rem;
+/* Телефон: скрываем подписи соцсетей, метки адрес/телефон можно скрыть если тесно */
+@media (max-width: 560px){
+  .footer > img{ width: 62px; }
+
+  .media-label{ display: none; }   /* ✅ только иконки */
+
+  .footer-label{ display: none; }  /* ✅ чтобы всё влезло (останутся значения) */
+
+  .footer-info{
+    gap: 10px;
+    flex-direction: column;
+    padding: 6px 8px;
   }
-  .media-label{
-    font-size: .95rem;
+  .footer-line{
+    width: 90%;
   }
+  .footer-link{
+    font-size: .98rem;
+  }
+
+  .media-link{
+    padding: 7px 8px;
+    border-radius: 12px;
+  }
+
+  .icon{ font-size: 1.45rem; }
+}
+
+/* Очень маленькие */
+@media (max-width: 380px){
+  .footer > img{ width: 54px; }
 }
 
 /* =========================
@@ -435,16 +563,19 @@ footer > img{
     animation: none;
     opacity: .12;
   }
+  .footer-link{ animation: none; }
 }
 
 /* =========================
    EXTRA PERFORMANCE SWITCH (optional)
-   Если где-то всё равно слабое устройство:
-   можно вручную добавить класс .low-perf на body
 ========================= */
 body.low-perf .site-bg::before,
 body.low-perf .site-bg::after{
   mix-blend-mode: normal;
   animation: none;
   opacity: .10;
+}
+body.low-perf .footer-link{
+  animation: none;
+  filter: none;
 }

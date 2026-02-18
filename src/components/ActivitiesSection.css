@@ -55,6 +55,17 @@
   align-items: center;
   justify-content: center;
 }
+.carousel-wrapper{
+  touch-action: pan-y; 
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.carousel-card img{
+  user-drag: none;
+  -webkit-user-drag: none;
+  pointer-events: none; 
+}
 
 .carousel-card {
   position: absolute;
@@ -107,6 +118,9 @@
 
 /* стрелки */
 .nav {
+  display: flex;
+    justify-content: center;
+    align-items: center;
   position: absolute;
   top: 40%;
   font-size: 2.5rem;
@@ -121,7 +135,7 @@
 .nav.right { right: 10px; }
 
 /* ================= BREAKPOINT ================= */
-@media (max-width: 768px) {
+@media (max-width: 990px) {
   .desktop {
     display: none;
   }
@@ -129,4 +143,10 @@
   .mobile {
     display: flex;
   }
+}
+@media  (max-width: 400px){
+  .carousel-card{
+    width: 20rem;
+  }
+  
 }
