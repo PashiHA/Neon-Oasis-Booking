@@ -134,7 +134,15 @@ export default function Booking() {
       if (data?.editUrl) {
         console.log("Edit URL:", data.editUrl);
       }
-
+       console.log("SENDING:", {
+    name: formData.name,
+    phone: formData.phone,
+    email: formData.email,
+    service: formData.service,
+    date: formData.date,
+    time: formData.time,
+    quantity: formData.quantity,
+     });
       setFormData({
         name: "",
         phone: "",
