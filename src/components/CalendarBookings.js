@@ -189,22 +189,23 @@ function CalendarBookings({ bookingsList, onDelete }) {
   }, [activeBookings, initDone]);
 
   // ✅ Чистим unread/seen, если бронь удалили ИЛИ отменили (теперь её нет в activeBookings)
-  useEffect(() => {
-    const present = new Set(activeBookings.map(b => b.id).filter(Boolean));
+ // ✅ Чистим unread/seen, если бронь удалили ИЛИ отменили (теперь её нет в activeBookings)
+useEffect(() => {
+  const present = new Set(activeBookings.map(b => b.id).filter(Boolean));
 
-    const nextUnread = new Set([...unreadIds].filter(id => present.has(id)));
-    if (nextUnread.size !== unreadIds.size) {
-      setUnreadIds(nextUnread);
-      saveSetToLS(LS_UNREAD, nextUnread);
-    }
+  setUnreadIds(prev => {
+    const next = new Set([...prev].filter(id => present.has(id)));
+    saveSetToLS(LS_UNREAD, next);
+    return next;
+  });
 
-    const nextSeen = new Set([...seenIds].filter(id => present.has(id)));
-    if (nextSeen.size !== seenIds.size) {
-      setSeenIds(nextSeen);
-      saveSetToLS(LS_SEEN, nextSeen);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBookings]); // намеренно от activeBookings
+  setSeenIds(prev => {
+    const next = new Set([...prev].filter(id => present.has(id)));
+    saveSetToLS(LS_SEEN, next);
+    return next;
+  });
+}, [activeBookings]);
+// намеренно от activeBookings
 
   /* ---- 4.1) По-слотные индикаторы ---- */
   const markSlotRead = (slot) => {
