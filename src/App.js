@@ -14,6 +14,7 @@ import Home from './components/Home';
 import Admin from './components/Admin';
 import Booking from './components/booking';
 import GamesCatalog from './components/GamesCatalog'
+import BookingEdit from "./components/BookingEdit";
 import logo from './img/logo.png';
 import { FaInstagram, FaTiktok, FaMapMarkerAlt } from 'react-icons/fa';
 
@@ -79,6 +80,7 @@ function App() {
               <Route path="/admin" element={<ProtectedAdmin />} />
               <Route path="/GamesCatalog" element={<GamesCatalog />} />
               <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/booking/edit" element={<BookingEdit />} />
             </Routes>
           </main>
 
