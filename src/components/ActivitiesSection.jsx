@@ -1,17 +1,27 @@
 // src/components/ActivitiesSection.jsx
 import React, { useMemo, useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import "./ActivitiesSection.css";
 
 export default function ActivitiesSection({ vr, ps5, billiard, pcIcon, autosimIcon }) {
+  const navigate = useNavigate();
+
   const items = useMemo(
     () => [
-      { title: "VR-игры", img: vr },
-      { title: "PlayStation", img: ps5 },
-      { title: "Бильярд", img: billiard },
-      { title: "ПК", img: pcIcon },
-      { title: "Автосимуляторы", img: autosimIcon },
+      { key: "vr", title: "VR-игры", img: vr },
+      { key: "ps", title: "PlayStation", img: ps5 },
+      { key: "billiard", title: "Бильярд", img: billiard },
+      { key: "pc", title: "ПК", img: pcIcon },
+      { key: "autosim", title: "Автосимуляторы", img: autosimIcon },
     ],
     [vr, ps5, billiard, pcIcon, autosimIcon]
+  );
+
+  const goBooking = useCallback(
+    (activityKey) => {
+      navigate(`/Booking?activity=${encodeURIComponent(activityKey)}`);
+    },
+    [navigate]
   );
 
   const [index, setIndex] = useState(0);
@@ -28,14 +38,13 @@ export default function ActivitiesSection({ vr, ps5, billiard, pcIcon, autosimIc
     startY: 0,
     lastX: 0,
     lastY: 0,
-    locked: false, // true => горизонтальный свайп, можно preventDefault
+    locked: false, // true => горизонтальный свайп
   });
 
-  const SWIPE_MIN_PX = 40;      // минимальная дистанция
-  const LOCK_ANGLE = 18;        // градусов: если отклонение по Y небольшое -> считаем горизонтальным
+  const SWIPE_MIN_PX = 40;
+  const LOCK_ANGLE = 18;
 
   const onPointerDown = (e) => {
-    // только основной палец/кнопка
     if (e.pointerType === "mouse" && e.button !== 0) return;
 
     swipeRef.current.active = true;
@@ -45,7 +54,6 @@ export default function ActivitiesSection({ vr, ps5, billiard, pcIcon, autosimIc
     swipeRef.current.lastX = e.clientX;
     swipeRef.current.lastY = e.clientY;
 
-    // захват указателя — чтобы не терять события
     try {
       e.currentTarget.setPointerCapture?.(e.pointerId);
     } catch {}
@@ -60,24 +68,20 @@ export default function ActivitiesSection({ vr, ps5, billiard, pcIcon, autosimIc
     swipeRef.current.lastX = e.clientX;
     swipeRef.current.lastY = e.clientY;
 
-    // определяем, горизонтальный ли жест
     if (!swipeRef.current.locked) {
       const adx = Math.abs(dx);
       const ady = Math.abs(dy);
       if (adx < 8 && ady < 8) return;
 
-      // угол: чем меньше ady относительно adx — тем более горизонтально
-      const angle = (Math.atan2(ady, adx) * 180) / Math.PI; // 0 = строго горизонтально
+      const angle = (Math.atan2(ady, adx) * 180) / Math.PI;
       if (angle <= LOCK_ANGLE) {
         swipeRef.current.locked = true;
       } else {
-        // вертикальный скролл — не мешаем
         swipeRef.current.active = false;
         return;
       }
     }
 
-    // если горизонтально — блокируем прокрутку страницы во время жеста
     if (swipeRef.current.locked) {
       e.preventDefault?.();
     }
@@ -92,12 +96,11 @@ export default function ActivitiesSection({ vr, ps5, billiard, pcIcon, autosimIc
     const dx = s.lastX - s.startX;
     const dy = s.lastY - s.startY;
 
-    // если жест был явно вертикальный — ничего
     if (Math.abs(dy) > Math.abs(dx)) return;
 
     if (Math.abs(dx) >= SWIPE_MIN_PX) {
-      if (dx < 0) next();  // свайп влево => следующий
-      else prev();         // свайп вправо => предыдущий
+      if (dx < 0) next();
+      else prev();
     }
   };
 
@@ -112,6 +115,7 @@ export default function ActivitiesSection({ vr, ps5, billiard, pcIcon, autosimIc
   const cardStyle = (offset) => {
     const abs = Math.abs(offset);
     const maxVisible = 2;
+
     if (abs > maxVisible) {
       return {
         opacity: 0,
@@ -130,8 +134,10 @@ export default function ActivitiesSection({ vr, ps5, billiard, pcIcon, autosimIc
       opacity,
       transform: `translate3d(${offset * stepX}%, 0, ${z}px) rotateY(${rotateY}deg) scale(${scale})`,
       zIndex: offset === 0 ? 5 : abs === 1 ? 4 : 3,
+      // ✅ даём клик ТОЛЬКО на центральную карточку (как у тебя было)
       pointerEvents: offset === 0 ? "auto" : "none",
       filter: offset === 0 ? "none" : "brightness(0.92)",
+      cursor: offset === 0 ? "pointer" : "default",
     };
   };
 
@@ -141,8 +147,16 @@ export default function ActivitiesSection({ vr, ps5, billiard, pcIcon, autosimIc
 
       {/* ===== DESKTOP VERSION ===== */}
       <div className="activity-row desktop">
-        {items.map((item, i) => (
-          <div className="activity-item" key={i}>
+        {items.map((item) => (
+          <div
+            className="activity-item"
+            key={item.key}
+            onClick={() => goBooking(item.key)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Enter" && goBooking(item.key)}
+            style={{ cursor: "pointer" }}
+          >
             <img src={item.img} alt={item.title} />
             <p>{item.title}</p>
           </div>
@@ -168,8 +182,20 @@ export default function ActivitiesSection({ vr, ps5, billiard, pcIcon, autosimIc
         >
           {items.map((item, i) => {
             const offset = getOffset(i);
+            const isCenter = offset === 0;
+
             return (
-              <div className="carousel-card" style={cardStyle(offset)} key={i}>
+              <div
+                className="carousel-card"
+                style={cardStyle(offset)}
+                key={item.key}
+                onClick={isCenter ? () => goBooking(item.key) : undefined}
+                role={isCenter ? "button" : undefined}
+                tabIndex={isCenter ? 0 : -1}
+                onKeyDown={
+                  isCenter ? (e) => e.key === "Enter" && goBooking(item.key) : undefined
+                }
+              >
                 <img src={item.img} alt={item.title} draggable="false" />
                 <p>{item.title}</p>
               </div>
