@@ -27,7 +27,11 @@ const VR_PLAYERS = [
 
 const API_SERVER =
   process.env.REACT_APP_API_URL ||
-  "http://localhost:5000";
+  (
+    process.env.NODE_ENV === "development"
+      ? "http://localhost:5000"
+      : ""
+  );
 
 const VR_GAMES_API =
   `${API_SERVER}/api/vr-games`;
