@@ -928,7 +928,7 @@ const simGames = [
     trailerUrl:
       "https://www.xbox.com/en-US/games/forza-horizon-6",
     imageUrl:
-      "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2483190/header.jpg",
+      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTpssVSCoD2-hByqvQIY60nAGZz8ZA0NFabhA6bcWfcJg&s=10",
   },
   {
     title: "Dirt Rally 2",
