@@ -29,18 +29,19 @@ const INITIAL_STATUSES = {
 
 // Каталог напитков и цены (MDL)
 const DRINKS = {
-  cola_05: { name: 'Coca-Cola 0.5 l', price: 16 },
-  fanta_05: { name: 'Fanta 0.5 l', price: 16 },
-  sprite_05: { name: 'Sprite 0.5 l', price: 16 },
+  cola_05: { name: 'Coca-Cola 0.5 l', price: 17 },
+  fanta_05: { name: 'Fanta 0.5 l', price: 17 },
+  sprite_05: { name: 'Sprite 0.5 l', price: 17 },
   schweppes_033: { name: 'Schweppes 0.33 l', price: 16 },
   dorna_05: { name: 'Dorna 0.5 l', price: 14 },
-  frunzea_05: { name: 'Ceai Frunzea 0.5 l', price: 20 },
+  frunzea_05: { name: 'Ceai Frunzea 0.5 l', price: 21 },
   cappy_02: { name: 'Cappy 0.2 l', price: 13 },
-  monster_05: { name: 'Monster 0.5 l', price: 30 },
+  monster_05: { name: 'Monster 0.5 l', price: 31 },
   burn_0250: { name: 'Burn 0.25 l', price: 25 },
   cola_033: { name: 'Coca-Cola 0.33 l', price: 13 },
   fanta_033: { name: 'Fanta 0.33 l', price: 13 },
   sprite_033: { name: 'Sprite 0.33 l', price: 13 },
+  redbull_025: { name: 'Red Bull 0.25 l', price: 26 },
 };
 const DRINK_KEYS = Object.keys(DRINKS);
 
