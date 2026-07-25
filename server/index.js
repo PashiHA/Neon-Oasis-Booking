@@ -1,56 +1,42 @@
 // server/index.js
 
 require("dotenv").config({
-  path: require("path").join(
-    __dirname,
-    "../.env"
-  ),
+  path: require("path").join(__dirname, "../.env"),
 });
 
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const basicAuth = require(
-  "express-basic-auth"
-);
+const basicAuth = require("express-basic-auth");
 const { chromium } = require("playwright");
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
-const PORT =
-  process.env.PORT || 5000;
-
-const ADMIN_USER =
-  process.env.ADMIN_USER;
-
-const ADMIN_PASS =
-  process.env.ADMIN_PASS;
+const ADMIN_USER = process.env.ADMIN_USER;
+const ADMIN_PASS = process.env.ADMIN_PASS;
 
 app.use(cors());
 app.use(express.json());
 
 /* =========================================================
-   КАТАЛОГИ META HORIZON+
+   НАСТРОЙКИ КАТАЛОГА
 ========================================================= */
 
 const HORIZON_CATALOGS = [
   {
     key: "main",
     name: "Основной каталог",
-    url:
-      "https://www.meta.com/experiences/section/746836817401205/",
+    url: "https://www.meta.com/experiences/section/746836817401205/",
   },
   {
     key: "indie",
     name: "Инди-каталог",
-    url:
-      "https://www.meta.com/experiences/section/3170833353093973/",
+    url: "https://www.meta.com/experiences/section/3170833353093973/",
   },
 ];
 
-const VR_CACHE_TIME =
-  6 * 60 * 60 * 1000;
-
+const VR_CACHE_TIME = 6 * 60 * 60 * 1000;
 const MIN_GAMES_PER_CATALOG = 1;
 
 let vrCatalogCache = {
@@ -58,6 +44,12 @@ let vrCatalogCache = {
   catalogs: [],
   updatedAt: 0,
 };
+
+/*
+ * Не позволяет нескольким запросам одновременно
+ * запускать несколько Chromium.
+ */
+let vrCatalogRefreshPromise = null;
 
 /* =========================================================
    НОРМАЛИЗАЦИЯ
@@ -89,32 +81,34 @@ function titleFromSlug(slug = "") {
     .split("-")
     .filter(Boolean)
     .map((word, index) => {
+      const normalizedWord = word.toLowerCase();
+
       if (
         index > 0 &&
-        smallWords.has(word)
+        smallWords.has(normalizedWord)
       ) {
-        return word;
+        return normalizedWord;
       }
 
-      if (word === "vr") {
+      if (normalizedWord === "vr") {
         return "VR";
       }
 
-      if (word === "xr") {
+      if (normalizedWord === "xr") {
         return "XR";
       }
 
-      if (word === "ii") {
+      if (normalizedWord === "ii") {
         return "II";
       }
 
-      if (word === "iii") {
+      if (normalizedWord === "iii") {
         return "III";
       }
 
       return (
-        word.charAt(0).toUpperCase() +
-        word.slice(1)
+        normalizedWord.charAt(0).toUpperCase() +
+        normalizedWord.slice(1)
       );
     })
     .join(" ");
@@ -135,10 +129,9 @@ function parseMetaGameUrl(href = "") {
   const normalizedUrl =
     normalizeMetaUrl(href);
 
-  const match =
-    normalizedUrl.match(
-      /\/experiences\/(?:quest\/)?([^/]+)\/(\d+)\/?/i
-    );
+  const match = normalizedUrl.match(
+    /\/experiences\/(?:quest\/)?([^/]+)\/(\d+)\/?/i
+  );
 
   if (!match) {
     return null;
@@ -160,7 +153,6 @@ function parseMetaGameUrl(href = "") {
   return {
     slug,
     metaId,
-
     url:
       "https://www.meta.com/experiences/" +
       `${slug}/${metaId}/`,
@@ -185,10 +177,6 @@ function cleanMetaGameTitle(
     .replace(/\s+/g, " ")
     .trim();
 
-  /*
-   * Удаляем служебные надписи
-   * перед названием игры.
-   */
   title = title
     .replace(
       /^(top rated|best seller|bestseller|featured|popular|new release|new)\s*/i,
@@ -197,12 +185,8 @@ function cleanMetaGameTitle(
     .trim();
 
   /*
-   * Удаляем рейтинг и всё после него.
-   *
-   * Пример:
-   * GOLF+4.8 (53K) Games Sports $29.99
-   * превращается в:
-   * GOLF+
+   * Удаляет рейтинг:
+   * GOLF+4.8 (53K) → GOLF+
    */
   title = title
     .split(
@@ -211,7 +195,7 @@ function cleanMetaGameTitle(
     .trim();
 
   /*
-   * Удаляем категории и цену.
+   * Удаляет категории и цену.
    */
   title = title
     .split(/\s*[·•]\s*Games\b/i)[0]
@@ -234,11 +218,6 @@ function cleanMetaGameTitle(
     "horizon+",
   ]);
 
-  /*
-   * Если вместо названия получен
-   * служебный текст, пробуем создать
-   * название из адреса.
-   */
   if (
     invalidTitles.has(
       normalizeTitle(title)
@@ -272,7 +251,7 @@ function isGarbageGameTitle(title = "") {
 }
 
 /* =========================================================
-   АВТОМАТИЧЕСКИЙ ВОЗРАСТ
+   ВОЗРАСТНЫЕ КАТЕГОРИИ
 ========================================================= */
 
 function getAutomaticAgeCategories(
@@ -281,11 +260,6 @@ function getAutomaticAgeCategories(
   const normalized =
     normalizeTitle(title);
 
-  /*
-   * Сначала проверяем слова,
-   * указывающие на взрослый или
-   * потенциально жестокий контент.
-   */
   const adultKeywords = [
     "horror",
     "zombie",
@@ -329,10 +303,6 @@ function getAutomaticAgeCategories(
     ];
   }
 
-  /*
-   * Спокойные, семейные, спортивные,
-   * музыкальные и творческие игры.
-   */
   const childrenKeywords = [
     "golf",
     "mini golf",
@@ -384,13 +354,11 @@ function getAutomaticAgeCategories(
     "clean sheet",
     "cleansheet",
     "miniature",
-    "lego",
     "max mustard",
     "wallace",
     "gromit",
     "smurfs",
     "spongebob",
-    "track craft",
     "track craft",
     "little cities",
     "townsmen",
@@ -417,11 +385,6 @@ function getAutomaticAgeCategories(
     ];
   }
 
-  /*
-   * Если определить возраст нельзя,
-   * детям игру автоматически
-   * не рекомендуем.
-   */
   return [
     "Подростки",
     "Взрослые",
@@ -458,9 +421,7 @@ async function dismissMetaCookies(page) {
     "Принять все",
   ];
 
-  for (
-    const buttonName of buttonNames
-  ) {
+  for (const buttonName of buttonNames) {
     try {
       const button =
         page.getByRole("button", {
@@ -477,22 +438,16 @@ async function dismissMetaCookies(page) {
       const firstButton =
         button.first();
 
-      if (
-        await firstButton.isVisible()
-      ) {
+      if (await firstButton.isVisible()) {
         await firstButton.click({
           timeout: 3000,
         });
 
-        await page.waitForTimeout(700);
-
+        await page.waitForTimeout(500);
         return;
       }
     } catch {
-      /*
-       * Если кнопка отсутствует,
-       * продолжаем загрузку.
-       */
+      // Продолжаем загрузку без ошибки.
     }
   }
 }
@@ -507,7 +462,7 @@ async function scrollToLoadAllGames(page) {
 
   for (
     let attempt = 0;
-    attempt < 50;
+    attempt < 30;
     attempt += 1
   ) {
     const currentHeight =
@@ -522,7 +477,7 @@ async function scrollToLoadAllGames(page) {
       );
     });
 
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(700);
 
     if (
       currentHeight === previousHeight
@@ -534,7 +489,7 @@ async function scrollToLoadAllGames(page) {
 
     previousHeight = currentHeight;
 
-    if (unchangedAttempts >= 5) {
+    if (unchangedAttempts >= 3) {
       break;
     }
   }
@@ -545,7 +500,7 @@ async function scrollToLoadAllGames(page) {
 }
 
 /* =========================================================
-   ПОЛУЧЕНИЕ КАРТОЧЕК
+   ПОЛУЧЕНИЕ ИГР СО СТРАНИЦЫ
 ========================================================= */
 
 async function extractGamesFromPage(
@@ -593,6 +548,8 @@ async function extractGamesFromPage(
           imageUrl:
             image?.currentSrc ||
             image?.src ||
+            image?.getAttribute("src") ||
+            image?.getAttribute("data-src") ||
             "",
 
           imageAlt:
@@ -608,9 +565,7 @@ async function extractGamesFromPage(
 
   for (const rawCard of rawCards) {
     const parsedUrl =
-      parseMetaGameUrl(
-        rawCard.href
-      );
+      parseMetaGameUrl(rawCard.href);
 
     if (!parsedUrl) {
       continue;
@@ -619,10 +574,6 @@ async function extractGamesFromPage(
     const existingGame =
       games.get(parsedUrl.metaId);
 
-    /*
-     * Если карточка уже сохранена
-     * с изображением, оставляем её.
-     */
     if (
       existingGame &&
       (
@@ -640,17 +591,12 @@ async function extractGamesFromPage(
         parsedUrl.slug
       );
 
-    /*
-     * Полностью удаляем View,
-     * Home, Games, Apps и Sale.
-     */
     if (isGarbageGameTitle(title)) {
       continue;
     }
 
     const game = {
       metaId: parsedUrl.metaId,
-
       title,
 
       description:
@@ -658,31 +604,20 @@ async function extractGamesFromPage(
           ? "Игра из инди-каталога Meta Horizon+."
           : "Игра из основного каталога Meta Horizon+.",
 
-      trailerUrl:
-        parsedUrl.url,
-
-      imageUrl:
-        rawCard.imageUrl || "",
-
-      ownership:
-        "horizon-plus",
-
-      catalog:
-        catalog.key,
-
-      catalogName:
-        catalog.name,
+      trailerUrl: parsedUrl.url,
+      imageUrl: rawCard.imageUrl || "",
+      ownership: "horizon-plus",
+      catalog: catalog.key,
+      catalogName: catalog.name,
 
       /*
-       * Для автоматически добавленных
-       * игр количество неизвестно.
+       * Не показываем неизвестное
+       * количество игроков.
        */
       maxPlayers: null,
 
       ageCategories:
-        getAutomaticAgeCategories(
-          title
-        ),
+        getAutomaticAgeCategories(title),
     };
 
     if (
@@ -703,35 +638,61 @@ async function extractGamesFromPage(
 }
 
 /* =========================================================
-   ЗАГРУЗКА КАТАЛОГА
+   ЗАГРУЗКА ОДНОГО КАТАЛОГА
 ========================================================= */
 
 async function loadCatalogWithBrowser(
   browser,
   catalog
 ) {
-  const context =
-    await browser.newContext({
-      locale: "en-US",
-
-      userAgent:
-        "Mozilla/5.0 " +
-        "(Windows NT 10.0; Win64; x64) " +
-        "AppleWebKit/537.36 " +
-        "(KHTML, like Gecko) " +
-        "Chrome/131.0.0.0 " +
-        "Safari/537.36",
-
-      viewport: {
-        width: 1440,
-        height: 1000,
-      },
-    });
-
-  const page =
-    await context.newPage();
+  let context;
 
   try {
+    context =
+      await browser.newContext({
+        locale: "en-US",
+
+        userAgent:
+          "Mozilla/5.0 " +
+          "(Windows NT 10.0; Win64; x64) " +
+          "AppleWebKit/537.36 " +
+          "(KHTML, like Gecko) " +
+          "Chrome/131.0.0.0 " +
+          "Safari/537.36",
+
+        viewport: {
+          width: 1100,
+          height: 800,
+        },
+      });
+
+    const page =
+      await context.newPage();
+
+    /*
+     * Не загружаем тяжёлые ресурсы.
+     * Ссылки на картинки остаются в DOM.
+     */
+    await page.route(
+      "**/*",
+      async (route) => {
+        const resourceType =
+          route
+            .request()
+            .resourceType();
+
+        if (
+          resourceType === "image" ||
+          resourceType === "media" ||
+          resourceType === "font"
+        ) {
+          return route.abort();
+        }
+
+        return route.continue();
+      }
+    );
+
     console.log(
       `Открываю ${catalog.name}...`
     );
@@ -753,15 +714,13 @@ async function loadCatalogWithBrowser(
     ) {
       throw new Error(
         `${catalog.name}: ` +
-          `Meta вернула статус ` +
-          response.status()
+        `Meta вернула статус ` +
+        response.status()
       );
     }
 
     await dismissMetaCookies(page);
-
-    await page.waitForTimeout(5000);
-
+    await page.waitForTimeout(3000);
     await scrollToLoadAllGames(page);
 
     const games =
@@ -775,14 +734,12 @@ async function loadCatalogWithBrowser(
       MIN_GAMES_PER_CATALOG
     ) {
       throw new Error(
-        `${catalog.name}: ` +
-          "игры не обнаружены"
+        `${catalog.name}: игры не обнаружены`
       );
     }
 
     console.log(
-      `${catalog.name}: ` +
-        `найдено игр — ${games.length}`
+      `${catalog.name}: найдено игр — ${games.length}`
     );
 
     return {
@@ -792,7 +749,11 @@ async function loadCatalogWithBrowser(
       games,
     };
   } finally {
-    await context.close();
+    if (context) {
+      await context
+        .close()
+        .catch(() => {});
+    }
   }
 }
 
@@ -814,9 +775,7 @@ function mergeCatalogResults(
       catalogResult.games
     ) {
       const existingGame =
-        mergedGames.get(
-          game.metaId
-        );
+        mergedGames.get(game.metaId);
 
       if (!existingGame) {
         mergedGames.set(
@@ -841,9 +800,7 @@ function mergeCatalogResults(
             ...new Set([
               ...(
                 existingGame.catalogs ||
-                [
-                  existingGame.catalog,
-                ]
+                [existingGame.catalog]
               ),
 
               game.catalog,
@@ -861,29 +818,58 @@ function mergeCatalogResults(
 }
 
 /* =========================================================
-   ОБНОВЛЕНИЕ ОБОИХ КАТАЛОГОВ
+   ОБНОВЛЕНИЕ КАТАЛОГОВ
 ========================================================= */
 
 async function loadAllHorizonCatalogs() {
   let browser;
 
   try {
+    console.log(
+      "Запускаю экономный Chromium..."
+    );
+
     browser =
       await chromium.launch({
         headless: true,
+
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+          "--no-zygote",
+          "--disable-extensions",
+          "--disable-background-networking",
+          "--disable-background-timer-throttling",
+          "--disable-renderer-backgrounding",
+          "--disable-sync",
+          "--disable-translate",
+          "--metrics-recording-only",
+          "--mute-audio",
+        ],
       });
 
-    const catalogResults =
-      await Promise.all(
-        HORIZON_CATALOGS.map(
-          (catalog) => {
-            return loadCatalogWithBrowser(
-              browser,
-              catalog
-            );
-          }
-        )
+    /*
+     * Каталоги загружаются по очереди.
+     * Promise.all здесь использовать нельзя.
+     */
+    const catalogResults = [];
+
+    for (
+      const catalog of
+      HORIZON_CATALOGS
+    ) {
+      const catalogResult =
+        await loadCatalogWithBrowser(
+          browser,
+          catalog
+        );
+
+      catalogResults.push(
+        catalogResult
       );
+    }
 
     const games =
       mergeCatalogResults(
@@ -928,10 +914,61 @@ async function loadAllHorizonCatalogs() {
     return vrCatalogCache;
   } finally {
     if (browser) {
-      await browser.close();
+      await browser
+        .close()
+        .catch(() => {});
     }
+
+    console.log(
+      "Chromium полностью закрыт."
+    );
   }
 }
+
+/*
+ * Если каталог уже обновляется,
+ * следующий запрос ожидает это же обновление.
+ */
+function refreshHorizonCatalogs() {
+  if (vrCatalogRefreshPromise) {
+    console.log(
+      "Обновление уже выполняется. Ожидаю результат..."
+    );
+
+    return vrCatalogRefreshPromise;
+  }
+
+  vrCatalogRefreshPromise =
+    loadAllHorizonCatalogs()
+      .finally(() => {
+        vrCatalogRefreshPromise = null;
+      });
+
+  return vrCatalogRefreshPromise;
+}
+
+/* =========================================================
+   ПРОВЕРКА РАБОТЫ СЕРВЕРА
+========================================================= */
+
+app.get(
+  "/api/health",
+  (req, res) => {
+    res.json({
+      status: "ok",
+      service: "Neon Oasis VR API",
+      cacheGames:
+        vrCatalogCache.games.length,
+
+      updatedAt:
+        vrCatalogCache.updatedAt
+          ? new Date(
+              vrCatalogCache.updatedAt
+            ).toISOString()
+          : null,
+    });
+  }
+);
 
 /* =========================================================
    API VR-ИГР
@@ -964,7 +1001,7 @@ app.get(
 
     try {
       const result =
-        await loadAllHorizonCatalogs();
+        await refreshHorizonCatalogs();
 
       return res.json({
         games: result.games,
@@ -995,8 +1032,7 @@ app.get(
           catalogs:
             vrCatalogCache.catalogs,
 
-          source:
-            "stale-cache",
+          source: "stale-cache",
 
           warning:
             "Показан предыдущий каталог.",
@@ -1038,8 +1074,9 @@ app.post(
       authHeader.split(" ")[1];
 
     if (
+      !process.env.API_TOKEN ||
       token !==
-      process.env.API_TOKEN
+        process.env.API_TOKEN
     ) {
       return res
         .status(403)
@@ -1052,7 +1089,7 @@ app.post(
       vrCatalogCache.updatedAt = 0;
 
       const result =
-        await loadAllHorizonCatalogs();
+        await refreshHorizonCatalogs();
 
       return res.json({
         message:
@@ -1068,6 +1105,11 @@ app.post(
         ).toISOString(),
       });
     } catch (error) {
+      console.error(
+        "Ошибка принудительного обновления:",
+        error
+      );
+
       return res
         .status(503)
         .json({
@@ -1098,8 +1140,9 @@ app.get(
       authHeader.split(" ")[1];
 
     if (
+      !process.env.API_TOKEN ||
       token !==
-      process.env.API_TOKEN
+        process.env.API_TOKEN
     ) {
       return res
         .status(403)
@@ -1108,7 +1151,7 @@ app.get(
         });
     }
 
-    res.json(bookings);
+    return res.json(bookings);
   }
 );
 
@@ -1123,18 +1166,37 @@ app.post(
       activity,
     } = req.body;
 
+    if (
+      !name ||
+      !phone ||
+      !date ||
+      !time ||
+      !activity
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Заполнены не все поля бронирования.",
+        });
+    }
+
     bookings.push({
       name,
       phone,
       date,
       time,
       activity,
+      createdAt:
+        new Date().toISOString(),
     });
 
-    res.status(200).json({
-      message:
-        "Бронирование успешно принято!",
-    });
+    return res
+      .status(200)
+      .json({
+        message:
+          "Бронирование успешно принято!",
+      });
   }
 );
 
@@ -1157,8 +1219,7 @@ if (ADMIN_USER && ADMIN_PASS) {
   );
 } else {
   console.warn(
-    "ADMIN_USER или ADMIN_PASS " +
-      "не заданы в .env"
+    "ADMIN_USER или ADMIN_PASS не заданы."
   );
 }
 
@@ -1166,13 +1227,14 @@ if (ADMIN_USER && ADMIN_PASS) {
    СТАТИКА REACT
 ========================================================= */
 
+const buildPath =
+  path.join(
+    __dirname,
+    "../build"
+  );
+
 app.use(
-  express.static(
-    path.join(
-      __dirname,
-      "../build"
-    )
-  )
+  express.static(buildPath)
 );
 
 /* =========================================================
@@ -1182,13 +1244,41 @@ app.use(
 app.get(
   /^\/(?!api).*/,
   (req, res) => {
-    res.sendFile(
+    const indexPath =
       path.join(
-        __dirname,
-        "../build",
+        buildPath,
         "index.html"
-      )
+      );
+
+    return res.sendFile(
+      indexPath,
+      (error) => {
+        if (error) {
+          return res
+            .status(404)
+            .json({
+              error:
+                "React-сборка отсутствует. API работает отдельно.",
+            });
+        }
+      }
     );
+  }
+);
+
+/* =========================================================
+   ОБРАБОТКА НЕИЗВЕСТНЫХ API
+========================================================= */
+
+app.use(
+  "/api",
+  (req, res) => {
+    return res
+      .status(404)
+      .json({
+        error:
+          "API-маршрут не найден.",
+      });
   }
 );
 
@@ -1196,27 +1286,29 @@ app.get(
    ЗАПУСК
 ========================================================= */
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(
-    `Server is running on ` +
-      `http://localhost:${PORT}`
+    `Server is running on port ${PORT}`
   );
 
   console.log(
-    `VR API: ` +
-      `http://localhost:${PORT}/api/vr-games`
+    `VR API: /api/vr-games`
+  );
+
+  console.log(
+    `Health check: /api/health`
   );
 
   console.log(
     "Используются каталоги:"
   );
 
-  HORIZON_CATALOGS.forEach(
-    (catalog) => {
-      console.log(
-        `- ${catalog.name}: ` +
-          catalog.url
-      );
-    }
-  );
+  for (
+    const catalog of
+    HORIZON_CATALOGS
+  ) {
+    console.log(
+      `- ${catalog.name}: ${catalog.url}`
+    );
+  }
 });

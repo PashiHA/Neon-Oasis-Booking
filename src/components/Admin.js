@@ -80,6 +80,8 @@ export default function Admin() {
   const [shipmentCart, setShipmentCart] = useState({}); // { sku: qty }
   const [saleCart, setSaleCart] = useState({}); // { sku: qty }
   const [uiMsg, setUiMsg] = useState('');
+  const [drinkActionBusy, setDrinkActionBusy] = useState(false);
+  const drinkActionLockRef = useRef(false);
 
   // Collapsible panels visibility
   const [showShipment, setShowShipment] = useState(false);
@@ -342,41 +344,120 @@ export default function Admin() {
     return Object.entries(saleCart).some(([sku, qty]) => (Number(drinkStock?.[sku] || 0) < qty));
   }, [saleCart, drinkStock]);
 
-  // ✅ Атомарная батч-транзакция по всему складу (all-or-nothing)
-  // deltaMap: { sku: +qty } или { sku: -qty }
-  const batchAdjustStockTx = async (deltaMap) => {
-    const stockRef = ref(db, 'drinks/stock');
-    try {
-      const res = await runTransaction(stockRef, (cur) => {
-        const currentStock = cur && typeof cur === 'object' ? { ...cur } : {};
+  const newInventoryOperationId = () => (
+    crypto?.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+  );
 
-        // сначала считаем "предварительно"
-        for (const [sku, delta] of Object.entries(deltaMap)) {
-          const curQty = Number(currentStock[sku] || 0);
-          const nextQty = curQty + Number(delta || 0);
-          if (nextQty < 0) return; // abort
-          currentStock[sku] = nextQty;
+  // Одна транзакция меняет сразу склад, историю продаж и выручку.
+  // Поэтому продажа не может записаться без списания, а списание — без продажи.
+  const commitInventoryOperation = async ({ type, entries, totalSum = 0 }) => {
+    const operationId = newInventoryOperationId();
+    const ts = serverNow();
+    const dayKey = getLocalDayKeyFromTs(ts);
+
+    try {
+      const result = await runTransaction(ref(db), (rootValue) => {
+        const root = rootValue && typeof rootValue === 'object' ? { ...rootValue } : {};
+        const drinksNode = root.drinks && typeof root.drinks === 'object' ? { ...root.drinks } : {};
+        const stock = drinksNode.stock && typeof drinksNode.stock === 'object'
+          ? { ...drinksNode.stock }
+          : {};
+
+        // Сначала проверяем всю корзину. При любой ошибке транзакция отменяется целиком.
+        for (const [sku, rawQty] of entries) {
+          const qty = Math.floor(Number(rawQty));
+          if (!DRINKS[sku] || !Number.isFinite(qty) || qty <= 0) return;
+
+          const currentQty = Number(stock[sku] || 0);
+          if (!Number.isFinite(currentQty) || currentQty < 0) return;
+
+          const nextQty = type === 'sale' ? currentQty - qty : currentQty + qty;
+          if (nextQty < 0) return;
+          stock[sku] = nextQty;
         }
 
-        return currentStock;
+        const operations = drinksNode.operations && typeof drinksNode.operations === 'object'
+          ? { ...drinksNode.operations }
+          : {};
+
+        // Идентификатор делает операцию однозначной и оставляет проверяемый след.
+        operations[operationId] = {
+          id: operationId,
+          type,
+          ts,
+          dayKey,
+          totalSum: Number(totalSum || 0),
+          items: Object.fromEntries(entries.map(([sku, qty]) => [sku, Number(qty)]))
+        };
+
+        root.drinks = {
+          ...drinksNode,
+          stock,
+          operations
+        };
+
+        if (type === 'sale') {
+          const sales = root.sales && typeof root.sales === 'object' ? { ...root.sales } : {};
+          const salesDay = sales[dayKey] && typeof sales[dayKey] === 'object' ? { ...sales[dayKey] } : {};
+          const salesDrinks = salesDay.drinks && typeof salesDay.drinks === 'object'
+            ? { ...salesDay.drinks }
+            : {};
+
+          for (const [sku, rawQty] of entries) {
+            const qty = Number(rawQty);
+            const drink = DRINKS[sku];
+            salesDrinks[`${operationId}_${sku}`] = {
+              operationId,
+              ts,
+              sku,
+              name: drink.name,
+              qty,
+              price: drink.price,
+              total: drink.price * qty
+            };
+          }
+
+          salesDay.drinks = salesDrinks;
+          sales[dayKey] = salesDay;
+          root.sales = sales;
+
+          const dailyStats = root.dailyStats && typeof root.dailyStats === 'object'
+            ? { ...root.dailyStats }
+            : {};
+          const statsDay = dailyStats[dayKey] && typeof dailyStats[dayKey] === 'object'
+            ? { ...dailyStats[dayKey] }
+            : {};
+          statsDay.revenueMDL = Number(statsDay.revenueMDL || 0) + Number(totalSum || 0);
+          dailyStats[dayKey] = statsDay;
+          root.dailyStats = dailyStats;
+        }
+
+        return root;
       });
 
-      return { ok: !!res?.committed, stock: res?.snapshot?.val() || {} };
-    } catch (e) {
-      console.error(e);
-      return { ok: false, error: e };
+      const rootAfter = result?.snapshot?.val() || {};
+      return {
+        ok: !!result?.committed,
+        operationId,
+        stock: rootAfter?.drinks?.stock || {}
+      };
+    } catch (error) {
+      console.error(error);
+      return { ok: false, operationId, error };
     }
   };
 
   const addShipmentAll = async () => {
     const entries = Object.entries(shipmentCart).filter(([, q]) => q > 0);
-    if (!entries.length) return;
+    if (!entries.length || drinkActionLockRef.current) return;
 
     setUiMsg('');
+    drinkActionLockRef.current = true;
+    setDrinkActionBusy(true);
     try {
-      // deltaMap для поступления
-      const deltaMap = Object.fromEntries(entries.map(([sku, qty]) => [sku, +qty]));
-      const tx = await batchAdjustStockTx(deltaMap);
+      const tx = await commitInventoryOperation({ type: 'shipment', entries });
 
       if (!tx.ok) {
         setUiMsg('Ошибка: поступление не применено (конфликт/ошибка транзакции).');
@@ -396,12 +477,15 @@ export default function Admin() {
     } catch (e) {
       console.error(e);
       setUiMsg('Ошибка при добавлении поступления');
+    } finally {
+      drinkActionLockRef.current = false;
+      setDrinkActionBusy(false);
     }
   };
 
   const sellAll = async () => {
     const entries = Object.entries(saleCart).filter(([, q]) => q > 0);
-    if (!entries.length) return;
+    if (!entries.length || drinkActionLockRef.current) return;
 
     setUiMsg('');
 
@@ -411,37 +495,24 @@ export default function Admin() {
       return;
     }
 
+    drinkActionLockRef.current = true;
+    setDrinkActionBusy(true);
+
     try {
       const totalSum = entries.reduce((s, [sku, qty]) => s + ((DRINKS[sku]?.price || 0) * qty), 0);
-
-      // deltaMap для продажи (минус)
-      const deltaMap = Object.fromEntries(entries.map(([sku, qty]) => [sku, -qty]));
-      const tx = await batchAdjustStockTx(deltaMap);
+      const tx = await commitInventoryOperation({ type: 'sale', entries, totalSum });
 
       if (!tx.ok) {
         setUiMsg('Продажа не применена (конфликт: кто-то уже купил/остаток изменился). Попробуй ещё раз.');
         return;
       }
 
-      // Запись продаж и логов (после успешного списания)
+      // Продажи и выручка уже записаны внутри той же транзакции. Здесь только журнал UI.
       for (const [sku, qty] of entries) {
         const drink = DRINKS[sku];
         const remaining = Number(tx.stock?.[sku] || 0);
-
-        await push(ref(db, `sales/${todayKey}/drinks`), {
-          ts: serverNow(),
-          sku,
-          name: drink.name,
-          qty,
-          price: drink.price,
-          total: drink.price * qty
-        });
-
         await addLog(`Продажа: ${drink.name} × ${qty} = ${drink.price * qty} MDL (остаток: ${remaining})`);
       }
-
-      // Выручка
-      await runTransaction(ref(db, `dailyStats/${todayKey}/revenueMDL`), (cur) => (cur || 0) + totalSum);
 
       setSaleCart({});
       setShowSale(false);
@@ -449,6 +520,9 @@ export default function Admin() {
     } catch (e) {
       console.error(e);
       setUiMsg('Ошибка при продаже');
+    } finally {
+      drinkActionLockRef.current = false;
+      setDrinkActionBusy(false);
     }
   };
 
@@ -615,7 +689,9 @@ export default function Admin() {
                 </ul>
 
                 <div className="sell-total">К добавлению: {shipmentCount} шт.</div>
-                <button onClick={addShipmentAll} disabled={shipmentCount === 0}>Добавить поступление</button>
+                <button onClick={addShipmentAll} disabled={shipmentCount === 0 || drinkActionBusy}>
+                  {drinkActionBusy ? 'Сохранение…' : 'Добавить поступление'}
+                </button>
               </div>
             </div>
 
@@ -664,10 +740,10 @@ export default function Admin() {
                 <div className="sell-total">К оплате: {saleTotal.toFixed(2)} MDL</div>
                 <button
                   onClick={sellAll}
-                  disabled={saleCount === 0 || saleInsufficient}
+                  disabled={saleCount === 0 || saleInsufficient || drinkActionBusy}
                   title={saleInsufficient ? 'Недостаточно на складе' : undefined}
                 >
-                  Продать выбранное
+                  {drinkActionBusy ? 'Сохранение…' : 'Продать выбранное'}
                 </button>
               </div>
             </div>
