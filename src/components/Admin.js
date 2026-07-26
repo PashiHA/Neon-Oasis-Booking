@@ -1,4 +1,3 @@
-// src/components/Admin.js — fixed bookings(cancelled) + fixed drinks stock logic (atomic batch TX)
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './Admin.css';
 import { db } from '../firebase';
@@ -9,11 +8,11 @@ import {
   remove,
   onChildAdded,
   push,
+  set,
   serverTimestamp
 } from 'firebase/database';
 import CalendarBookings from './CalendarBookings';
 
-// -------------------- Helpers --------------------
 const INITIAL_STATUSES = {
   vr1: { status: 'Свободно', until: null },
   vr2: { status: 'Свободно', until: null },
@@ -27,7 +26,6 @@ const INITIAL_STATUSES = {
   autosim2: { status: 'Свободно', until: null }
 };
 
-// Каталог напитков и цены (MDL)
 const DRINKS = {
   cola_05: { name: 'Coca-Cola 0.5 l', price: 17 },
   fanta_05: { name: 'Fanta 0.5 l', price: 17 },
@@ -41,508 +39,1402 @@ const DRINKS = {
   cola_033: { name: 'Coca-Cola 0.33 l', price: 13 },
   fanta_033: { name: 'Fanta 0.33 l', price: 13 },
   sprite_033: { name: 'Sprite 0.33 l', price: 13 },
-  redbull_025: { name: 'Red Bull 0.25 l', price: 26 },
+  redbull_025: { name: 'Red Bull 0.25 l', price: 26 }
 };
+
 const DRINK_KEYS = Object.keys(DRINKS);
 
 const getLocalDayKeyFromTs = (ts) => {
-  const d = new Date(ts);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  const date = new Date(ts);
+  const year = date.getFullYear();
+  const month = String(
+    date.getMonth() + 1
+  ).padStart(2, '0');
+
+  const day = String(
+    date.getDate()
+  ).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 };
 
-const serviceCategory = (key) =>
-  key.startsWith('vr') ? 'vr'
-    : key.startsWith('ps') ? 'ps'
-      : key.startsWith('billiard') ? 'billiard'
-        : (key.startsWith('sim') || key.startsWith('autosim')) ? 'sim'
-          : 'other';
+const serviceCategory = (key) => {
+  if (key.startsWith('vr')) {
+    return 'vr';
+  }
 
-const isCancelledBooking = (b) => String(b?.status || '').toLowerCase() === 'cancelled';
+  if (key.startsWith('ps')) {
+    return 'ps';
+  }
 
-// -------------------- Component --------------------
+  if (key.startsWith('billiard')) {
+    return 'billiard';
+  }
+
+  if (
+    key.startsWith('sim') ||
+    key.startsWith('autosim')
+  ) {
+    return 'sim';
+  }
+
+  return 'other';
+};
+
+const isCancelledBooking = (booking) => {
+  return String(
+    booking?.status || ''
+  ).toLowerCase() === 'cancelled';
+};
+
 export default function Admin() {
-  // UI state
-  const [statuses, setStatuses] = useState(INITIAL_STATUSES);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [hours, setHours] = useState(0);
-  const [minutes, setMinutes] = useState(30);
-  const [dailyStats, setDailyStats] = useState({ vr: 0, ps: 0, billiard: 0, sim: 0, revenueMDL: 0 });
+  const [statuses, setStatuses] =
+    useState(INITIAL_STATUSES);
 
-  // bookings: храним все + отдельно видимые (без cancelled)
-  const [bookingsAll, setBookingsAll] = useState([]);
-  const [logs, setLogs] = useState([]);
+  const [selectedItem, setSelectedItem] =
+    useState(null);
 
-  // Напитки: склад + корзины
-  const [drinkStock, setDrinkStock] = useState({}); // { sku: number }
-  const [shipmentCart, setShipmentCart] = useState({}); // { sku: qty }
-  const [saleCart, setSaleCart] = useState({}); // { sku: qty }
-  const [uiMsg, setUiMsg] = useState('');
-  const [drinkActionBusy, setDrinkActionBusy] = useState(false);
-  const drinkActionLockRef = useRef(false);
+  const [hours, setHours] =
+    useState(0);
 
-  // Collapsible panels visibility
-  const [showShipment, setShowShipment] = useState(false);
-  const [showSale, setShowSale] = useState(false);
+  const [minutes, setMinutes] =
+    useState(30);
 
-  // Server time offset
-  const [serverOffset, setServerOffset] = useState(0);
-  const serverNow = useMemo(() => () => Date.now() + serverOffset, [serverOffset]);
+  const [dailyStats, setDailyStats] =
+    useState({
+      vr: 0,
+      ps: 0,
+      billiard: 0,
+      sim: 0,
+      revenueMDL: 0
+    });
 
-  // Day key derived from server time, auto-updates
-  const [todayKey, setTodayKey] = useState(() => getLocalDayKeyFromTs(Date.now()));
+  const [bookingsAll, setBookingsAll] =
+    useState([]);
 
-  // -------------------- server offset --------------------
+  const [logs, setLogs] =
+    useState([]);
+
+  const [drinkStock, setDrinkStock] =
+    useState({});
+
+  const [shipmentCart, setShipmentCart] =
+    useState({});
+
+  const [saleCart, setSaleCart] =
+    useState({});
+
+  const [uiMsg, setUiMsg] =
+    useState('');
+
+  const [
+    drinkActionBusy,
+    setDrinkActionBusy
+  ] = useState(false);
+
+  const drinkActionLockRef =
+    useRef(false);
+
+  const [showShipment, setShowShipment] =
+    useState(false);
+
+  const [showSale, setShowSale] =
+    useState(false);
+
+  const [serverOffset, setServerOffset] =
+    useState(0);
+
+  const serverNow = useMemo(
+    () => () =>
+      Date.now() + serverOffset,
+    [serverOffset]
+  );
+
+  const [todayKey, setTodayKey] =
+    useState(() =>
+      getLocalDayKeyFromTs(Date.now())
+    );
+
   useEffect(() => {
-    const offRef = ref(db, '.info/serverTimeOffset');
-    const unsub = onValue(offRef, (snap) => setServerOffset(snap.val() || 0));
-    return () => unsub();
+    const offsetRef = ref(
+      db,
+      '.info/serverTimeOffset'
+    );
+
+    const unsubscribe = onValue(
+      offsetRef,
+      (snapshot) => {
+        setServerOffset(
+          snapshot.val() || 0
+        );
+      }
+    );
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
-    const tick = () => setTodayKey(getLocalDayKeyFromTs(serverNow()));
-    const id = setInterval(tick, 60_000);
-    tick();
-    return () => clearInterval(id);
+    const updateDay = () => {
+      setTodayKey(
+        getLocalDayKeyFromTs(
+          serverNow()
+        )
+      );
+    };
+
+    const intervalId =
+      setInterval(
+        updateDay,
+        60_000
+      );
+
+    updateDay();
+
+    return () =>
+      clearInterval(intervalId);
   }, [serverNow]);
 
-  // -------------------- Logging --------------------
-  const addLog = async (entry, ts = serverNow()) => {
-    const dayKey = getLocalDayKeyFromTs(ts);
-    const logRef = ref(db, `logs/${dayKey}`);
-    return push(logRef, { timestamp: ts, entry });
+  const addLog = async (
+    entry,
+    timestamp = serverNow()
+  ) => {
+    const dayKey =
+      getLocalDayKeyFromTs(timestamp);
+
+    const logRef = ref(
+      db,
+      `logs/${dayKey}`
+    );
+
+    return push(logRef, {
+      timestamp,
+      entry
+    });
   };
 
   useEffect(() => {
-    const logRef = ref(db, `logs/${todayKey}`);
-    const unsub = onValue(logRef, (snap) => {
-      const data = snap.val() || {};
-      const list = Object.values(data)
-        .sort((a, b) => a.timestamp - b.timestamp)
-        .map((item) => `${new Date(item.timestamp).toLocaleString()}: ${item.entry}`);
-      setLogs(list);
-    });
-    return () => unsub();
+    const logRef = ref(
+      db,
+      `logs/${todayKey}`
+    );
+
+    const unsubscribe = onValue(
+      logRef,
+      (snapshot) => {
+        const data =
+          snapshot.val() || {};
+
+        const list =
+          Object.values(data)
+            .sort(
+              (first, second) =>
+                first.timestamp -
+                second.timestamp
+            )
+            .map(
+              (item) =>
+                `${new Date(
+                  item.timestamp
+                ).toLocaleString()}: ${
+                  item.entry
+                }`
+            );
+
+        setLogs(list);
+      }
+    );
+
+    return () => unsubscribe();
   }, [todayKey]);
 
-  // -------------------- Statuses subscribe + audit --------------------
-  const prevStatusesRef = useRef(INITIAL_STATUSES);
+  const prevStatusesRef =
+    useRef(INITIAL_STATUSES);
 
   useEffect(() => {
-    const statusesRef = ref(db, 'statuses');
+    const statusesRef =
+      ref(db, 'statuses');
 
-    const unsub = onValue(statusesRef, (snap) => {
-      const data = snap.val() || {};
-      const merged = { ...INITIAL_STATUSES, ...data };
+    const unsubscribe = onValue(
+      statusesRef,
+      (snapshot) => {
+        const data =
+          snapshot.val() || {};
 
-      // Audit unexpected resets
-      const nowTs = serverNow();
-      const prev = prevStatusesRef.current || {};
-      Object.entries(merged).forEach(([k, v]) => {
-        const p = prev[k] || {};
-        if (p.status === 'Занято' && v.status === 'Свободно' && (p.until || 0) > nowTs + 2000) {
-          if (!v.reason && !v.updatedBy) {
-            addLog(`⚠️ Неожиданный сброс ${k} (раньше срока). Возможен внешний клиент/другая вкладка.`);
-          }
-        }
-      });
+        const merged = {
+          ...INITIAL_STATUSES,
+          ...data
+        };
 
-      prevStatusesRef.current = merged;
-      setStatuses(merged);
-    });
+        const currentTime =
+          serverNow();
 
-    return () => unsub();
+        const previous =
+          prevStatusesRef.current ||
+          {};
+
+        Object.entries(merged)
+          .forEach(([key, value]) => {
+            const previousValue =
+              previous[key] || {};
+
+            const unexpectedReset =
+              previousValue.status ===
+                'Занято' &&
+              value.status ===
+                'Свободно' &&
+              (
+                previousValue.until || 0
+              ) >
+                currentTime + 2000;
+
+            if (
+              unexpectedReset &&
+              !value.reason &&
+              !value.updatedBy
+            ) {
+              addLog(
+                `⚠️ Неожиданный сброс ${key}. Возможен внешний клиент или другая вкладка.`
+              ).catch(console.error);
+            }
+          });
+
+        prevStatusesRef.current =
+          merged;
+
+        setStatuses(merged);
+      }
+    );
+
+    return () => unsubscribe();
   }, [serverNow]);
 
-  // -------------------- Daily stats subscribe --------------------
   useEffect(() => {
-    const statsRef = ref(db, `dailyStats/${todayKey}`);
-    const unsub = onValue(statsRef, (snap) => {
-      const data = snap.val() || {};
-      setDailyStats({ vr: 0, ps: 0, billiard: 0, sim: 0, revenueMDL: 0, ...data });
-    });
-    return () => unsub();
+    const statsRef = ref(
+      db,
+      `dailyStats/${todayKey}`
+    );
+
+    const unsubscribe = onValue(
+      statsRef,
+      (snapshot) => {
+        const data =
+          snapshot.val() || {};
+
+        setDailyStats({
+          vr: 0,
+          ps: 0,
+          billiard: 0,
+          sim: 0,
+          revenueMDL: 0,
+          ...data
+        });
+      }
+    );
+
+    return () => unsubscribe();
   }, [todayKey]);
 
-  // -------------------- Bookings: subscribe --------------------
   useEffect(() => {
-    const bookingsRef = ref(db, 'bookings');
+    const bookingsRef =
+      ref(db, 'bookings');
 
-    // список — берём ВСЕ, но ниже в UI показываем без cancelled
-    const unsubList = onValue(bookingsRef, (snap) => {
-      const data = snap.val() || {};
-      const list = Object.entries(data).map(([id, entry]) => ({ id, ...entry }));
-      setBookingsAll(list);
-    });
+    const unsubscribeList = onValue(
+      bookingsRef,
+      (snapshot) => {
+        const data =
+          snapshot.val() || {};
 
-    // логируем только реальные новые брони, не cancelled
-    const unsubChild = onChildAdded(bookingsRef, (snap) => {
-      const b = snap.val();
-      if (!b) return;
-      if (isCancelledBooking(b)) return;
-      addLog(`Новое бронирование: ${b.name}, ${b.service}, ${b.date} в ${b.time}`);
-    });
+        const list =
+          Object.entries(data)
+            .map(([id, entry]) => ({
+              id,
+              ...entry
+            }));
+
+        setBookingsAll(list);
+      }
+    );
+
+    const unsubscribeAdded =
+      onChildAdded(
+        bookingsRef,
+        (snapshot) => {
+          const booking =
+            snapshot.val();
+
+          if (
+            !booking ||
+            isCancelledBooking(booking)
+          ) {
+            return;
+          }
+
+          addLog(
+            `Новое бронирование: ${booking.name}, ${booking.service}, ${booking.date} в ${booking.time}`
+          ).catch(console.error);
+        }
+      );
 
     return () => {
-      unsubList();
-      unsubChild();
+      unsubscribeList();
+      unsubscribeAdded();
     };
   }, []);
 
-  // ✅ показываем в админке/календаре только активные (не cancelled)
-  const bookingsVisible = useMemo(
-    () => bookingsAll.filter((b) => !isCancelledBooking(b)),
-    [bookingsAll]
-  );
+  const bookingsVisible =
+    useMemo(
+      () =>
+        bookingsAll.filter(
+          (booking) =>
+            !isCancelledBooking(
+              booking
+            )
+        ),
+      [bookingsAll]
+    );
 
-  // -------------------- Drinks: stock subscribe --------------------
   useEffect(() => {
-    const sRef = ref(db, 'drinks/stock');
-    const unsub = onValue(sRef, (snap) => {
-      const data = snap.val() || {};
-      setDrinkStock(data);
-    });
-    return () => unsub();
+    const stockRef = ref(
+      db,
+      'drinks/stock'
+    );
+
+    const unsubscribe = onValue(
+      stockRef,
+      (snapshot) => {
+        setDrinkStock(
+          snapshot.val() || {}
+        );
+      }
+    );
+
+    return () => unsubscribe();
   }, []);
 
-  // -------------------- Status TX helpers --------------------
-  const newLeaseId = () => (crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
-
-  const resetStatusTx = async (key, reason = 'system-auto') => {
-    try {
-      const res = await runTransaction(ref(db, `statuses/${key}`), (cur) => {
-        const curr = cur || { status: 'Свободно', until: null };
-        const isExpired = (curr.until || 0) <= serverNow();
-        if (curr.status === 'Занято' && (isExpired || reason === 'manual-reset')) {
-          return {
-            status: 'Свободно',
-            until: null,
-            leaseId: null,
-            updatedBy: reason === 'manual-reset' ? 'admin' : 'system',
-            reason,
-            updatedAt: serverTimestamp()
-          };
-        }
-        return curr;
-      });
-
-      const after = res?.snapshot?.val();
-      if (res?.committed && after?.status === 'Свободно') {
-        addLog(`Сброс ${key} — статус «Свободно» (${reason})`);
-      }
-    } catch (e) {
-      console.error(e);
-      addLog(`Ошибка сброса ${key}: ${e.message}`);
+  const newId = () => {
+    if (
+      typeof crypto !==
+        'undefined' &&
+      crypto.randomUUID
+    ) {
+      return crypto.randomUUID();
     }
+
+    return (
+      `${Date.now()}-` +
+      Math.random()
+        .toString(16)
+        .slice(2)
+    );
   };
 
-  const confirmBooking = async () => {
-    if (!selectedItem) return;
-    const totalMs = (Number(hours) || 0) * 3_600_000 + (Number(minutes) || 0) * 60_000;
-    if (totalMs <= 0) return;
+  const firebaseErrorText = (
+    error
+  ) => {
+    const code = String(
+      error?.code || ''
+    );
 
-    const until = serverNow() + totalMs;
-    const leaseId = newLeaseId();
+    const message = String(
+      error?.message || ''
+    );
 
-    try {
-      const res = await runTransaction(ref(db, `statuses/${selectedItem}`), (cur) => {
-        const curr = cur || { status: 'Свободно', until: null };
-        const expired = (curr.until || 0) <= serverNow();
-        if (curr.status === 'Свободно' || expired) {
-          return {
-            status: 'Занято',
-            until,
-            leaseId,
-            updatedBy: 'admin',
-            reason: 'manual-booking',
-            updatedAt: serverTimestamp()
-          };
-        }
-        return curr;
-      });
+    const normalized =
+      `${code} ${message}`
+        .toLowerCase();
 
-      const committed = res?.committed;
-      const after = res?.snapshot?.val();
-
-      if (committed && after?.status === 'Занято' && after?.leaseId === leaseId) {
-        addLog(`Бронирование ${selectedItem}: ${hours} ч ${minutes} мин`);
-        const cat = serviceCategory(selectedItem);
-        await runTransaction(ref(db, `dailyStats/${todayKey}/${cat}`), (cur) => (cur || 0) + totalMs);
-        setSelectedItem(null);
-        setHours(0);
-        setMinutes(30);
-      } else {
-        addLog(`Не удалось забронировать ${selectedItem}: уже занято`);
-      }
-    } catch (e) {
-      console.error(e);
-      addLog(`Ошибка бронирования ${selectedItem}: ${e.message}`);
+    if (
+      normalized.includes(
+        'permission-denied'
+      ) ||
+      normalized.includes(
+        'permission_denied'
+      )
+    ) {
+      return (
+        'Firebase запретила запись. ' +
+        'Проверьте Database Rules для ' +
+        'drinks, sales, dailyStats и logs.'
+      );
     }
-  };
 
-  const deleteBooking = async (id) => {
-    try {
-      await remove(ref(db, `bookings/${id}`));
-      addLog(`Удалено бронирование ID=${id}`);
-    } catch (e) {
-      console.error(e);
-      addLog(`Ошибка удаления брони ID=${id}: ${e.message}`);
+    if (
+      normalized.includes('network')
+    ) {
+      return (
+        'Нет соединения с Firebase. ' +
+        'Проверьте интернет.'
+      );
     }
+
+    return (
+      message ||
+      code ||
+      'Неизвестная ошибка Firebase'
+    );
   };
 
-  const resetBooking = async () => {
-    if (!selectedItem) return;
-    await resetStatusTx(selectedItem, 'manual-reset');
-    setSelectedItem(null);
-    setHours(0);
-    setMinutes(30);
-  };
-
-  // -------------------- Drinks helpers (stable carts) --------------------
-  const setCartQty = (setter) => (sku, qty) => {
-    const q = Math.max(0, Math.floor(Number(qty) || 0));
-    setter((prev) => {
-      const next = { ...prev };
-      if (q === 0) delete next[sku];
-      else next[sku] = q;
-      return next;
-    });
-  };
-
-  const incCart = (setter) => (sku, step = 1) => {
-    setter((prev) => {
-      const cur = Number(prev[sku] || 0);
-      const nextQty = Math.max(0, cur + step);
-      const next = { ...prev };
-      if (nextQty === 0) delete next[sku];
-      else next[sku] = nextQty;
-      return next;
-    });
-  };
-
-  const decCart = (setter) => (sku, step = 1) => {
-    setter((prev) => {
-      const cur = Number(prev[sku] || 0);
-      const nextQty = Math.max(0, cur - step);
-      const next = { ...prev };
-      if (nextQty === 0) delete next[sku];
-      else next[sku] = nextQty;
-      return next;
-    });
-  };
-
-  const shipmentCount = useMemo(() => Object.values(shipmentCart).reduce((a, b) => a + b, 0), [shipmentCart]);
-  const saleCount = useMemo(() => Object.values(saleCart).reduce((a, b) => a + b, 0), [saleCart]);
-
-  const saleTotal = useMemo(() => {
-    return Object.entries(saleCart).reduce((sum, [sku, qty]) => sum + ((DRINKS[sku]?.price || 0) * qty), 0);
-  }, [saleCart]);
-
-  const saleInsufficient = useMemo(() => {
-    return Object.entries(saleCart).some(([sku, qty]) => (Number(drinkStock?.[sku] || 0) < qty));
-  }, [saleCart, drinkStock]);
-
-  const newInventoryOperationId = () => (
-    crypto?.randomUUID
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(16).slice(2)}`
-  );
-
-  // Одна транзакция меняет сразу склад, историю продаж и выручку.
-  // Поэтому продажа не может записаться без списания, а списание — без продажи.
-  const commitInventoryOperation = async ({ type, entries, totalSum = 0 }) => {
-    const operationId = newInventoryOperationId();
-    const ts = serverNow();
-    const dayKey = getLocalDayKeyFromTs(ts);
-
+  const resetStatusTx = async (
+    key,
+    reason = 'system-auto'
+  ) => {
     try {
-      const result = await runTransaction(ref(db), (rootValue) => {
-        const root = rootValue && typeof rootValue === 'object' ? { ...rootValue } : {};
-        const drinksNode = root.drinks && typeof root.drinks === 'object' ? { ...root.drinks } : {};
-        const stock = drinksNode.stock && typeof drinksNode.stock === 'object'
-          ? { ...drinksNode.stock }
-          : {};
+      const result =
+        await runTransaction(
+          ref(
+            db,
+            `statuses/${key}`
+          ),
+          (currentValue) => {
+            const current =
+              currentValue || {
+                status: 'Свободно',
+                until: null
+              };
 
-        // Сначала проверяем всю корзину. При любой ошибке транзакция отменяется целиком.
-        for (const [sku, rawQty] of entries) {
-          const qty = Math.floor(Number(rawQty));
-          if (!DRINKS[sku] || !Number.isFinite(qty) || qty <= 0) return;
+            const expired =
+              (
+                current.until || 0
+              ) <= serverNow();
 
-          const currentQty = Number(stock[sku] || 0);
-          if (!Number.isFinite(currentQty) || currentQty < 0) return;
+            if (
+              current.status ===
+                'Занято' &&
+              (
+                expired ||
+                reason ===
+                  'manual-reset'
+              )
+            ) {
+              return {
+                status: 'Свободно',
+                until: null,
+                leaseId: null,
 
-          const nextQty = type === 'sale' ? currentQty - qty : currentQty + qty;
-          if (nextQty < 0) return;
-          stock[sku] = nextQty;
-        }
+                updatedBy:
+                  reason ===
+                    'manual-reset'
+                    ? 'admin'
+                    : 'system',
 
-        const operations = drinksNode.operations && typeof drinksNode.operations === 'object'
-          ? { ...drinksNode.operations }
-          : {};
+                reason,
+                updatedAt:
+                  serverTimestamp()
+              };
+            }
 
-        // Идентификатор делает операцию однозначной и оставляет проверяемый след.
-        operations[operationId] = {
-          id: operationId,
-          type,
-          ts,
-          dayKey,
-          totalSum: Number(totalSum || 0),
-          items: Object.fromEntries(entries.map(([sku, qty]) => [sku, Number(qty)]))
-        };
-
-        root.drinks = {
-          ...drinksNode,
-          stock,
-          operations
-        };
-
-        if (type === 'sale') {
-          const sales = root.sales && typeof root.sales === 'object' ? { ...root.sales } : {};
-          const salesDay = sales[dayKey] && typeof sales[dayKey] === 'object' ? { ...sales[dayKey] } : {};
-          const salesDrinks = salesDay.drinks && typeof salesDay.drinks === 'object'
-            ? { ...salesDay.drinks }
-            : {};
-
-          for (const [sku, rawQty] of entries) {
-            const qty = Number(rawQty);
-            const drink = DRINKS[sku];
-            salesDrinks[`${operationId}_${sku}`] = {
-              operationId,
-              ts,
-              sku,
-              name: drink.name,
-              qty,
-              price: drink.price,
-              total: drink.price * qty
-            };
+            return current;
           }
+        );
 
-          salesDay.drinks = salesDrinks;
-          sales[dayKey] = salesDay;
-          root.sales = sales;
+      const after =
+        result?.snapshot?.val();
 
-          const dailyStats = root.dailyStats && typeof root.dailyStats === 'object'
-            ? { ...root.dailyStats }
-            : {};
-          const statsDay = dailyStats[dayKey] && typeof dailyStats[dayKey] === 'object'
-            ? { ...dailyStats[dayKey] }
-            : {};
-          statsDay.revenueMDL = Number(statsDay.revenueMDL || 0) + Number(totalSum || 0);
-          dailyStats[dayKey] = statsDay;
-          root.dailyStats = dailyStats;
-        }
-
-        return root;
-      });
-
-      const rootAfter = result?.snapshot?.val() || {};
-      return {
-        ok: !!result?.committed,
-        operationId,
-        stock: rootAfter?.drinks?.stock || {}
-      };
+      if (
+        result?.committed &&
+        after?.status ===
+          'Свободно'
+      ) {
+        addLog(
+          `Сброс ${key} — статус «Свободно» (${reason})`
+        ).catch(console.error);
+      }
     } catch (error) {
       console.error(error);
-      return { ok: false, operationId, error };
+
+      addLog(
+        `Ошибка сброса ${key}: ${error.message}`
+      ).catch(console.error);
     }
   };
 
-  const addShipmentAll = async () => {
-    const entries = Object.entries(shipmentCart).filter(([, q]) => q > 0);
-    if (!entries.length || drinkActionLockRef.current) return;
-
-    setUiMsg('');
-    drinkActionLockRef.current = true;
-    setDrinkActionBusy(true);
-    try {
-      const tx = await commitInventoryOperation({ type: 'shipment', entries });
-
-      if (!tx.ok) {
-        setUiMsg('Ошибка: поступление не применено (конфликт/ошибка транзакции).');
+  const confirmBooking =
+    async () => {
+      if (!selectedItem) {
         return;
       }
 
-      // Логи после успешной транзакции
-      for (const [sku, qty] of entries) {
-        const drink = DRINKS[sku];
-        const remaining = Number(tx.stock?.[sku] || 0);
-        await addLog(`Поступление напитков: ${drink.name} × ${qty} (остаток: ${remaining})`);
+      const totalMs =
+        (
+          Number(hours) || 0
+        ) *
+          3_600_000 +
+        (
+          Number(minutes) || 0
+        ) *
+          60_000;
+
+      if (totalMs <= 0) {
+        return;
       }
 
-      setShipmentCart({});
-      setShowShipment(false);
-      setUiMsg(`Поступление добавлено: ${entries.length} поз., всего ${entries.reduce((s,[,q])=>s+q,0)} шт.`);
-    } catch (e) {
-      console.error(e);
-      setUiMsg('Ошибка при добавлении поступления');
-    } finally {
-      drinkActionLockRef.current = false;
-      setDrinkActionBusy(false);
-    }
-  };
+      const until =
+        serverNow() + totalMs;
+
+      const leaseId = newId();
+
+      try {
+        const result =
+          await runTransaction(
+            ref(
+              db,
+              `statuses/${selectedItem}`
+            ),
+            (currentValue) => {
+              const current =
+                currentValue || {
+                  status: 'Свободно',
+                  until: null
+                };
+
+              const expired =
+                (
+                  current.until || 0
+                ) <= serverNow();
+
+              if (
+                current.status ===
+                  'Свободно' ||
+                expired
+              ) {
+                return {
+                  status: 'Занято',
+                  until,
+                  leaseId,
+                  updatedBy:
+                    'admin',
+                  reason:
+                    'manual-booking',
+                  updatedAt:
+                    serverTimestamp()
+                };
+              }
+
+              return current;
+            }
+          );
+
+        const after =
+          result?.snapshot?.val();
+
+        const booked =
+          result?.committed &&
+          after?.status ===
+            'Занято' &&
+          after?.leaseId ===
+            leaseId;
+
+        if (booked) {
+          addLog(
+            `Бронирование ${selectedItem}: ${hours} ч ${minutes} мин`
+          ).catch(console.error);
+
+          const category =
+            serviceCategory(
+              selectedItem
+            );
+
+          await runTransaction(
+            ref(
+              db,
+              `dailyStats/${todayKey}/${category}`
+            ),
+            (currentValue) =>
+              (
+                Number(
+                  currentValue
+                ) || 0
+              ) + totalMs
+          );
+
+          setSelectedItem(null);
+          setHours(0);
+          setMinutes(30);
+        } else {
+          addLog(
+            `Не удалось забронировать ${selectedItem}: уже занято`
+          ).catch(console.error);
+        }
+      } catch (error) {
+        console.error(error);
+
+        addLog(
+          `Ошибка бронирования ${selectedItem}: ${error.message}`
+        ).catch(console.error);
+      }
+    };
+
+  const deleteBooking =
+    async (id) => {
+      try {
+        await remove(
+          ref(
+            db,
+            `bookings/${id}`
+          )
+        );
+
+        addLog(
+          `Удалено бронирование ID=${id}`
+        ).catch(console.error);
+      } catch (error) {
+        console.error(error);
+
+        addLog(
+          `Ошибка удаления брони ID=${id}: ${error.message}`
+        ).catch(console.error);
+      }
+    };
+
+  const resetBooking =
+    async () => {
+      if (!selectedItem) {
+        return;
+      }
+
+      await resetStatusTx(
+        selectedItem,
+        'manual-reset'
+      );
+
+      setSelectedItem(null);
+      setHours(0);
+      setMinutes(30);
+    };
+
+  const setCartQty =
+    (setter) =>
+    (sku, value) => {
+      const quantity = Math.max(
+        0,
+        Math.floor(
+          Number(value) || 0
+        )
+      );
+
+      setter((previous) => {
+        const next = {
+          ...previous
+        };
+
+        if (quantity === 0) {
+          delete next[sku];
+        } else {
+          next[sku] = quantity;
+        }
+
+        return next;
+      });
+    };
+
+  const incrementCart =
+    (setter) =>
+    (sku, step = 1) => {
+      setter((previous) => {
+        const current =
+          Number(
+            previous[sku] || 0
+          );
+
+        const quantity =
+          Math.max(
+            0,
+            current + step
+          );
+
+        const next = {
+          ...previous
+        };
+
+        if (quantity === 0) {
+          delete next[sku];
+        } else {
+          next[sku] = quantity;
+        }
+
+        return next;
+      });
+    };
+
+  const decrementCart =
+    (setter) =>
+    (sku, step = 1) => {
+      setter((previous) => {
+        const current =
+          Number(
+            previous[sku] || 0
+          );
+
+        const quantity =
+          Math.max(
+            0,
+            current - step
+          );
+
+        const next = {
+          ...previous
+        };
+
+        if (quantity === 0) {
+          delete next[sku];
+        } else {
+          next[sku] = quantity;
+        }
+
+        return next;
+      });
+    };
+
+  const shipmentCount = useMemo(
+    () =>
+      Object.values(
+        shipmentCart
+      ).reduce(
+        (sum, quantity) =>
+          sum + quantity,
+        0
+      ),
+    [shipmentCart]
+  );
+
+  const saleCount = useMemo(
+    () =>
+      Object.values(
+        saleCart
+      ).reduce(
+        (sum, quantity) =>
+          sum + quantity,
+        0
+      ),
+    [saleCart]
+  );
+
+  const saleTotal = useMemo(
+    () =>
+      Object.entries(
+        saleCart
+      ).reduce(
+        (
+          sum,
+          [sku, quantity]
+        ) =>
+          sum +
+          (
+            DRINKS[sku]
+              ?.price || 0
+          ) *
+            quantity,
+        0
+      ),
+    [saleCart]
+  );
+
+  const saleInsufficient =
+    useMemo(
+      () =>
+        Object.entries(
+          saleCart
+        ).some(
+          ([sku, quantity]) =>
+            Number(
+              drinkStock?.[
+                sku
+              ] || 0
+            ) < quantity
+        ),
+      [saleCart, drinkStock]
+    );
+
+  const commitInventoryOperation =
+    async ({
+      type,
+      entries,
+      totalSum = 0
+    }) => {
+      const operationId = newId();
+      const timestamp = serverNow();
+
+      const dayKey =
+        getLocalDayKeyFromTs(
+          timestamp
+        );
+
+      let stockCommitted = false;
+      let stockAfter = {};
+
+      try {
+        /*
+         * Транзакция выполняется только
+         * для остатков напитков.
+         *
+         * Бронирования, статусы и логи
+         * больше не создают конфликт.
+         */
+        const result =
+          await runTransaction(
+            ref(
+              db,
+              'drinks/stock'
+            ),
+            (stockValue) => {
+              const stock =
+                stockValue &&
+                typeof stockValue ===
+                  'object'
+                  ? {
+                      ...stockValue
+                    }
+                  : {};
+
+              for (
+                const [
+                  sku,
+                  rawQuantity
+                ] of entries
+              ) {
+                const quantity =
+                  Math.floor(
+                    Number(
+                      rawQuantity
+                    )
+                  );
+
+                if (
+                  !DRINKS[sku] ||
+                  !Number.isFinite(
+                    quantity
+                  ) ||
+                  quantity <= 0
+                ) {
+                  return;
+                }
+
+                const current =
+                  Number(
+                    stock[sku] || 0
+                  );
+
+                if (
+                  !Number.isFinite(
+                    current
+                  ) ||
+                  current < 0
+                ) {
+                  return;
+                }
+
+                const next =
+                  type === 'sale'
+                    ? current -
+                      quantity
+                    : current +
+                      quantity;
+
+                if (next < 0) {
+                  return;
+                }
+
+                stock[sku] = next;
+              }
+
+              return stock;
+            }
+          );
+
+        if (!result?.committed) {
+          return {
+            ok: false,
+            reason:
+              'insufficient-stock',
+
+            operationId,
+
+            stock:
+              result?.snapshot
+                ?.val() || {}
+          };
+        }
+
+        stockAfter =
+          result.snapshot.val() ||
+          {};
+
+        stockCommitted = true;
+
+        const operation = {
+          id: operationId,
+          type,
+          timestamp,
+          dayKey,
+
+          totalSum:
+            Number(
+              totalSum || 0
+            ),
+
+          items:
+            Object.fromEntries(
+              entries.map(
+                ([
+                  sku,
+                  quantity
+                ]) => [
+                  sku,
+                  Number(quantity)
+                ]
+              )
+            )
+        };
+
+        await set(
+          ref(
+            db,
+            `drinks/operations/${operationId}`
+          ),
+          operation
+        );
+
+        if (type === 'sale') {
+          for (
+            const [
+              sku,
+              rawQuantity
+            ] of entries
+          ) {
+            const quantity =
+              Number(rawQuantity);
+
+            const drink =
+              DRINKS[sku];
+
+            await set(
+              ref(
+                db,
+                `sales/${dayKey}/drinks/${operationId}_${sku}`
+              ),
+              {
+                operationId,
+                timestamp,
+                sku,
+                name: drink.name,
+                quantity,
+                qty: quantity,
+                price:
+                  drink.price,
+
+                total:
+                  drink.price *
+                  quantity
+              }
+            );
+          }
+
+          /*
+           * operationId не позволяет
+           * одной продаже попасть в
+           * выручку дважды.
+           */
+          await runTransaction(
+            ref(
+              db,
+              `dailyStats/${dayKey}`
+            ),
+            (dayValue) => {
+              const day =
+                dayValue &&
+                typeof dayValue ===
+                  'object'
+                  ? {
+                      ...dayValue
+                    }
+                  : {};
+
+              const operations =
+                day.revenueOperations &&
+                typeof day
+                  .revenueOperations ===
+                  'object'
+                  ? {
+                      ...day
+                        .revenueOperations
+                    }
+                  : {};
+
+              if (
+                operations[
+                  operationId
+                ]
+              ) {
+                return day;
+              }
+
+              day.revenueMDL =
+                Number(
+                  day.revenueMDL ||
+                    0
+                ) +
+                Number(
+                  totalSum || 0
+                );
+
+              operations[
+                operationId
+              ] = {
+                timestamp,
+
+                totalSum:
+                  Number(
+                    totalSum || 0
+                  )
+              };
+
+              day.revenueOperations =
+                operations;
+
+              return day;
+            }
+          );
+        }
+
+        return {
+          ok: true,
+          operationId,
+          stock: stockAfter
+        };
+      } catch (error) {
+        console.error(
+          'Ошибка операции со складом:',
+          error
+        );
+
+        /*
+         * Если товар уже списан,
+         * нельзя предлагать повторить
+         * продажу — это спишет его
+         * второй раз.
+         */
+        if (stockCommitted) {
+          return {
+            ok: true,
+            operationId,
+            stock: stockAfter,
+
+            warning:
+              'Склад изменён, но ' +
+              'история или статистика ' +
+              'записалась не полностью: ' +
+              firebaseErrorText(error)
+          };
+        }
+
+        return {
+          ok: false,
+          operationId,
+          error,
+
+          errorText:
+            firebaseErrorText(error)
+        };
+      }
+    };
+
+  const addShipmentAll =
+    async () => {
+      const entries =
+        Object.entries(
+          shipmentCart
+        ).filter(
+          ([, quantity]) =>
+            quantity > 0
+        );
+
+      if (
+        !entries.length ||
+        drinkActionLockRef.current
+      ) {
+        return;
+      }
+
+      setUiMsg('');
+      drinkActionLockRef.current =
+        true;
+
+      setDrinkActionBusy(true);
+
+      try {
+        const transaction =
+          await commitInventoryOperation({
+            type: 'shipment',
+            entries
+          });
+
+        if (!transaction.ok) {
+          setUiMsg(
+            transaction.reason ===
+              'insufficient-stock'
+              ? 'Поступление не применено: некорректное количество.'
+              : `Поступление не применено: ${
+                  transaction.errorText ||
+                  'ошибка Firebase'
+                }`
+          );
+
+          return;
+        }
+
+        for (
+          const [
+            sku,
+            quantity
+          ] of entries
+        ) {
+          const drink =
+            DRINKS[sku];
+
+          const remaining =
+            Number(
+              transaction.stock?.[
+                sku
+              ] || 0
+            );
+
+          await addLog(
+            `Поступление напитков: ${drink.name} × ${quantity} (остаток: ${remaining})`
+          ).catch((error) => {
+            console.error(
+              'Не удалось записать журнал:',
+              error
+            );
+          });
+        }
+
+        setShipmentCart({});
+        setShowShipment(false);
+
+        setUiMsg(
+          transaction.warning ||
+            `Поступление добавлено: ${
+              entries.length
+            } поз., всего ${
+              entries.reduce(
+                (
+                  sum,
+                  [, quantity]
+                ) =>
+                  sum + quantity,
+                0
+              )
+            } шт.`
+        );
+      } catch (error) {
+        console.error(error);
+
+        setUiMsg(
+          'Ошибка при добавлении поступления'
+        );
+      } finally {
+        drinkActionLockRef.current =
+          false;
+
+        setDrinkActionBusy(false);
+      }
+    };
 
   const sellAll = async () => {
-    const entries = Object.entries(saleCart).filter(([, q]) => q > 0);
-    if (!entries.length || drinkActionLockRef.current) return;
+    const entries =
+      Object.entries(
+        saleCart
+      ).filter(
+        ([, quantity]) =>
+          quantity > 0
+      );
 
-    setUiMsg('');
-
-    // Быстрая пред-проверка (UI)
-    if (entries.some(([sku, qty]) => (Number(drinkStock?.[sku] || 0) < qty))) {
-      setUiMsg('Недостаточно на складе для выбранных позиций');
+    if (
+      !entries.length ||
+      drinkActionLockRef.current
+    ) {
       return;
     }
 
-    drinkActionLockRef.current = true;
+    setUiMsg('');
+
+    const insufficient =
+      entries.some(
+        ([sku, quantity]) =>
+          Number(
+            drinkStock?.[sku] ||
+              0
+          ) < quantity
+      );
+
+    if (insufficient) {
+      setUiMsg(
+        'Недостаточно на складе для выбранных позиций'
+      );
+
+      return;
+    }
+
+    drinkActionLockRef.current =
+      true;
+
     setDrinkActionBusy(true);
 
     try {
-      const totalSum = entries.reduce((s, [sku, qty]) => s + ((DRINKS[sku]?.price || 0) * qty), 0);
-      const tx = await commitInventoryOperation({ type: 'sale', entries, totalSum });
+      const totalSum =
+        entries.reduce(
+          (
+            sum,
+            [sku, quantity]
+          ) =>
+            sum +
+            (
+              DRINKS[sku]
+                ?.price || 0
+            ) *
+              quantity,
+          0
+        );
 
-      if (!tx.ok) {
-        setUiMsg('Продажа не применена (конфликт: кто-то уже купил/остаток изменился). Попробуй ещё раз.');
+      const transaction =
+        await commitInventoryOperation({
+          type: 'sale',
+          entries,
+          totalSum
+        });
+
+      if (!transaction.ok) {
+        setUiMsg(
+          transaction.reason ===
+            'insufficient-stock'
+            ? 'Продажа не выполнена: фактического остатка уже недостаточно.'
+            : `Продажа не выполнена: ${
+                transaction.errorText ||
+                'ошибка Firebase'
+              }`
+        );
+
         return;
       }
 
-      // Продажи и выручка уже записаны внутри той же транзакции. Здесь только журнал UI.
-      for (const [sku, qty] of entries) {
-        const drink = DRINKS[sku];
-        const remaining = Number(tx.stock?.[sku] || 0);
-        await addLog(`Продажа: ${drink.name} × ${qty} = ${drink.price * qty} MDL (остаток: ${remaining})`);
+      for (
+        const [
+          sku,
+          quantity
+        ] of entries
+      ) {
+        const drink =
+          DRINKS[sku];
+
+        const remaining =
+          Number(
+            transaction.stock?.[
+              sku
+            ] || 0
+          );
+
+        await addLog(
+          `Продажа: ${drink.name} × ${quantity} = ${
+            drink.price *
+            quantity
+          } MDL (остаток: ${remaining})`
+        ).catch((error) => {
+          console.error(
+            'Не удалось записать журнал:',
+            error
+          );
+        });
       }
 
+      /*
+       * Корзина очищается после
+       * успешного списания.
+       */
       setSaleCart({});
       setShowSale(false);
-      setUiMsg(`Продано: ${entries.length} поз. / ${entries.reduce((s,[,q])=>s+q,0)} шт. На сумму ${totalSum} MDL`);
-    } catch (e) {
-      console.error(e);
-      setUiMsg('Ошибка при продаже');
+
+      setUiMsg(
+        transaction.warning ||
+          `Продано: ${
+            entries.length
+          } поз. / ${
+            entries.reduce(
+              (
+                sum,
+                [, quantity]
+              ) =>
+                sum + quantity,
+              0
+            )
+          } шт. На сумму ${totalSum} MDL`
+      );
+    } catch (error) {
+      console.error(error);
+
+      setUiMsg(
+        `Ошибка при продаже: ${
+          firebaseErrorText(error)
+        }`
+      );
     } finally {
-      drinkActionLockRef.current = false;
+      drinkActionLockRef.current =
+        false;
+
       setDrinkActionBusy(false);
     }
   };
 
-  // -------------------- Sweeper: check expired statuses --------------------
   useEffect(() => {
-    const id = setInterval(() => {
-      Object.entries(statuses).forEach(([key, val]) => {
-        if (val?.status === 'Занято' && (val?.until || 0) <= serverNow()) {
-          resetStatusTx(key, 'sweeper');
-        }
-      });
-    }, 30_000);
-    return () => clearInterval(id);
+    const intervalId =
+      setInterval(() => {
+        Object.entries(statuses)
+          .forEach(
+            ([key, value]) => {
+              if (
+                value?.status ===
+                  'Занято' &&
+                (
+                  value?.until || 0
+                ) <= serverNow()
+              ) {
+                resetStatusTx(
+                  key,
+                  'sweeper'
+                );
+              }
+            }
+          );
+      }, 30_000);
+
+    return () =>
+      clearInterval(intervalId);
   }, [statuses, serverNow]);
 
-  // -------------------- Download log --------------------
   const downloadLog = () => {
-    const format = (ms) => `${Math.floor(ms / 3_600_000)} ч ${Math.floor((ms % 3_600_000) / 60_000)} мин`;
-    const historyHeader = ['=== История событий ==='];
-    const summaryHeader = [
+    const format = (ms) => {
+      const hoursValue =
+        Math.floor(
+          ms / 3_600_000
+        );
+
+      const minutesValue =
+        Math.floor(
+          (
+            ms %
+            3_600_000
+          ) /
+            60_000
+        );
+
+      return (
+        `${hoursValue} ч ` +
+        `${minutesValue} мин`
+      );
+    };
+
+    const lines = [
+      '=== История событий ===',
+      ...logs,
       '',
       '=== Итоги за день ===',
       `Дата: ${todayKey}`,
@@ -550,206 +1442,651 @@ export default function Admin() {
       `PlayStation: ${format(dailyStats.ps)}`,
       `Бильярд: ${format(dailyStats.billiard)}`,
       `Автосимулятор: ${format(dailyStats.sim)}`,
-      `Выручка (напитки): ${Number(dailyStats.revenueMDL || 0).toFixed(2)} MDL`
+      `Выручка (напитки): ${Number(
+        dailyStats.revenueMDL || 0
+      ).toFixed(2)} MDL`
     ];
-    const allLines = [...historyHeader, ...logs, ...summaryHeader];
-    const blob = new Blob([allLines.join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `log_${todayKey}.txt`;
-    a.click();
+
+    const blob = new Blob(
+      [lines.join('\n')],
+      {
+        type: 'text/plain'
+      }
+    );
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const anchor =
+      document.createElement('a');
+
+    anchor.href = url;
+    anchor.download =
+      `log_${todayKey}.txt`;
+
+    anchor.click();
+
     URL.revokeObjectURL(url);
   };
 
-  // -------------------- Render --------------------
   return (
     <div className="admin-panel">
-      <button className='button-log' onClick={downloadLog}>Скачать статистику</button>
+      <button
+        className="button-log"
+        onClick={downloadLog}
+      >
+        Скачать статистику
+      </button>
 
       <div className="row row-top">
         <div className="stats-display">
-          <p>Дата: {todayKey}</p>
-          <p>VR: {`${Math.floor(dailyStats.vr / 3_600_000)} ч ${Math.floor((dailyStats.vr % 3_600_000) / 60_000)} мин`}</p>
-          <p>PlayStation: {`${Math.floor(dailyStats.ps / 3_600_000)} ч ${Math.floor((dailyStats.ps % 3_600_000) / 60_000)} мин`}</p>
-          <p>Бильярд: {`${Math.floor(dailyStats.billiard / 3_600_000)} ч ${Math.floor((dailyStats.billiard % 3_600_000) / 60_000)} мин`}</p>
-          <p>Автосимулятор: {`${Math.floor(dailyStats.sim / 3_600_000)} ч ${Math.floor((dailyStats.sim % 3_600_000) / 60_000)} мин`}</p>
-          <p>Выручка (напитки): {Number(dailyStats.revenueMDL || 0).toFixed(2)} MDL</p>
+          <p>
+            Дата: {todayKey}
+          </p>
+
+          <p>
+            VR:{' '}
+            {Math.floor(
+              dailyStats.vr /
+                3_600_000
+            )}{' '}
+            ч{' '}
+            {Math.floor(
+              (
+                dailyStats.vr %
+                3_600_000
+              ) /
+                60_000
+            )}{' '}
+            мин
+          </p>
+
+          <p>
+            PlayStation:{' '}
+            {Math.floor(
+              dailyStats.ps /
+                3_600_000
+            )}{' '}
+            ч{' '}
+            {Math.floor(
+              (
+                dailyStats.ps %
+                3_600_000
+              ) /
+                60_000
+            )}{' '}
+            мин
+          </p>
+
+          <p>
+            Бильярд:{' '}
+            {Math.floor(
+              dailyStats.billiard /
+                3_600_000
+            )}{' '}
+            ч{' '}
+            {Math.floor(
+              (
+                dailyStats.billiard %
+                3_600_000
+              ) /
+                60_000
+            )}{' '}
+            мин
+          </p>
+
+          <p>
+            Автосимулятор:{' '}
+            {Math.floor(
+              dailyStats.sim /
+                3_600_000
+            )}{' '}
+            ч{' '}
+            {Math.floor(
+              (
+                dailyStats.sim %
+                3_600_000
+              ) /
+                60_000
+            )}{' '}
+            мин
+          </p>
+
+          <p>
+            Выручка (напитки):{' '}
+            {Number(
+              dailyStats
+                .revenueMDL || 0
+            ).toFixed(2)}{' '}
+            MDL
+          </p>
         </div>
 
-        {/* ✅ Календарь бронирований — передаём только не отменённые */}
         <CalendarBookings
-          bookingsList={bookingsVisible}
-          onDelete={deleteBooking}
+          bookingsList={
+            bookingsVisible
+          }
+          onDelete={
+            deleteBooking
+          }
         />
       </div>
 
       <div className="row row-bottom">
-        {/* Плитки статусов */}
         <div className="admin-plates">
-          {Object.entries(statuses).map(([key, val]) => (
-            <div
-              key={key}
-              className={`admin-box ${val.status === 'Занято' ? 'busy' : 'free'}`}
-              onClick={() => setSelectedItem(key)}
-            >
-              <strong>{key.toUpperCase()}</strong>
-              <div>
-                {val.status}
-                {val.until && <small> до {new Date(val.until).toLocaleTimeString()}</small>}
+          {Object.entries(
+            statuses
+          ).map(
+            ([key, value]) => (
+              <div
+                key={key}
+                className={
+                  `admin-box ${
+                    value.status ===
+                    'Занято'
+                      ? 'busy'
+                      : 'free'
+                  }`
+                }
+                onClick={() =>
+                  setSelectedItem(
+                    key
+                  )
+                }
+              >
+                <strong>
+                  {key.toUpperCase()}
+                </strong>
+
+                <div>
+                  {value.status}
+
+                  {value.until && (
+                    <small>
+                      {' '}
+                      до{' '}
+                      {new Date(
+                        value.until
+                      ).toLocaleTimeString()}
+                    </small>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          )}
         </div>
 
-        {/* Попап бронирования */}
         {selectedItem && (
           <div className="popup">
-            {statuses[selectedItem]?.status === 'Занято' ? (
+            {statuses[
+              selectedItem
+            ]?.status ===
+            'Занято' ? (
               <>
                 <h3>
-                  {selectedItem.toUpperCase()} занят до {new Date(statuses[selectedItem].until).toLocaleTimeString()}
+                  {selectedItem.toUpperCase()}{' '}
+                  занят до{' '}
+                  {new Date(
+                    statuses[
+                      selectedItem
+                    ].until
+                  ).toLocaleTimeString()}
                 </h3>
-                <button onClick={resetBooking}>Сбросить</button>
-                <button onClick={() => setSelectedItem(null)}>Закрыть</button>
+
+                <button
+                  onClick={
+                    resetBooking
+                  }
+                >
+                  Сбросить
+                </button>
+
+                <button
+                  onClick={() =>
+                    setSelectedItem(
+                      null
+                    )
+                  }
+                >
+                  Закрыть
+                </button>
               </>
             ) : (
               <>
-                <h3>Забронировать {selectedItem.toUpperCase()}</h3>
+                <h3>
+                  Забронировать{' '}
+                  {selectedItem.toUpperCase()}
+                </h3>
+
                 <label>
                   Часы:{' '}
+
                   <input
                     type="number"
                     value={hours}
-                    onChange={(e) => setHours(Math.max(0, Math.min(12, Number(e.target.value))))}
                     min={0}
                     max={12}
+                    onChange={(
+                      event
+                    ) =>
+                      setHours(
+                        Math.max(
+                          0,
+                          Math.min(
+                            12,
+                            Number(
+                              event
+                                .target
+                                .value
+                            )
+                          )
+                        )
+                      )
+                    }
                   />
                 </label>
+
                 <label>
                   Минуты:{' '}
+
                   <input
                     type="number"
                     value={minutes}
-                    onChange={(e) => setMinutes(Math.max(0, Math.min(59, Number(e.target.value))))}
                     min={0}
                     max={59}
                     step={15}
+                    onChange={(
+                      event
+                    ) =>
+                      setMinutes(
+                        Math.max(
+                          0,
+                          Math.min(
+                            59,
+                            Number(
+                              event
+                                .target
+                                .value
+                            )
+                          )
+                        )
+                      )
+                    }
                   />
                 </label>
-                <button onClick={confirmBooking}>Подтвердить</button>
-                <button onClick={() => setSelectedItem(null)}>Отмена</button>
+
+                <button
+                  onClick={
+                    confirmBooking
+                  }
+                >
+                  Подтвердить
+                </button>
+
+                <button
+                  onClick={() =>
+                    setSelectedItem(
+                      null
+                    )
+                  }
+                >
+                  Отмена
+                </button>
               </>
             )}
           </div>
         )}
 
-        {/* Напитки */}
         <div className="drinks-section">
           <h3>Напитки</h3>
 
           <div className="drinks-forms">
-            {/* Поступление */}
-            <div className={`form-block panel ${showShipment ? '' : 'collapsed'}`}>
-              <div className="panel-head" onClick={() => setShowShipment((v) => !v)}>
+            <div
+              className={
+                `form-block panel ${
+                  showShipment
+                    ? ''
+                    : 'collapsed'
+                }`
+              }
+            >
+              <div
+                className="panel-head"
+                onClick={() =>
+                  setShowShipment(
+                    (value) =>
+                      !value
+                  )
+                }
+              >
                 <h4>Поступление</h4>
-                <button type="button" className="panel-toggle">{showShipment ? 'Свернуть' : 'Открыть'}</button>
+
+                <button
+                  type="button"
+                  className="panel-toggle"
+                >
+                  {showShipment
+                    ? 'Свернуть'
+                    : 'Открыть'}
+                </button>
               </div>
 
               <div className="panel-body">
                 <ul className="drinks-list">
-                  {DRINK_KEYS.map((sku) => {
-                    const d = DRINKS[sku];
-                    const stock = Number(drinkStock?.[sku] || 0);
-                    const qty = shipmentCart[sku] || 0;
+                  {DRINK_KEYS.map(
+                    (sku) => {
+                      const drink =
+                        DRINKS[sku];
 
-                    return (
-                      <li
-                        key={sku}
-                        className={`drink-row ${qty > 0 ? 'selected' : ''}`}
-                        onClick={() => incCart(setShipmentCart)(sku, 1)}
-                      >
-                        <span className="drink-name">{d.name}</span>
-                        <span className="drink-price">{d.price} MDL</span>
-                        <span className="drink-stock">На складе: {stock}</span>
+                      const stock =
+                        Number(
+                          drinkStock?.[
+                            sku
+                          ] || 0
+                        );
 
-                        <div className="qty-controls" onClick={(e) => e.stopPropagation()}>
-                          <button className='qty-controls-button' onClick={() => decCart(setShipmentCart)(sku, 1)}>-</button>
-                          <input
-                            type="number"
-                            min={0}
-                            value={qty}
-                            onChange={(e) => setCartQty(setShipmentCart)(sku, e.target.value)}
-                          />
-                          <button className='qty-controls-button' onClick={() => incCart(setShipmentCart)(sku, 1)}>+</button>
-                        </div>
-                      </li>
-                    );
-                  })}
+                      const quantity =
+                        shipmentCart[
+                          sku
+                        ] || 0;
+
+                      return (
+                        <li
+                          key={sku}
+                          className={
+                            `drink-row ${
+                              quantity >
+                              0
+                                ? 'selected'
+                                : ''
+                            }`
+                          }
+                        >
+                          <span className="drink-name">
+                            {drink.name}
+                          </span>
+
+                          <span className="drink-price">
+                            {drink.price}{' '}
+                            MDL
+                          </span>
+
+                          <span className="drink-stock">
+                            На складе:{' '}
+                            {stock}
+                          </span>
+
+                          <div className="qty-controls">
+                            <button
+                              type="button"
+                              className="qty-controls-button"
+                              onClick={() =>
+                                decrementCart(
+                                  setShipmentCart
+                                )(
+                                  sku,
+                                  1
+                                )
+                              }
+                            >
+                              −
+                            </button>
+
+                            <input
+                              type="number"
+                              min={0}
+                              value={
+                                quantity
+                              }
+                              onChange={(
+                                event
+                              ) =>
+                                setCartQty(
+                                  setShipmentCart
+                                )(
+                                  sku,
+                                  event
+                                    .target
+                                    .value
+                                )
+                              }
+                            />
+
+                            <button
+                              type="button"
+                              className="qty-controls-button"
+                              onClick={() =>
+                                incrementCart(
+                                  setShipmentCart
+                                )(
+                                  sku,
+                                  1
+                                )
+                              }
+                            >
+                              +
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    }
+                  )}
                 </ul>
 
-                <div className="sell-total">К добавлению: {shipmentCount} шт.</div>
-                <button onClick={addShipmentAll} disabled={shipmentCount === 0 || drinkActionBusy}>
-                  {drinkActionBusy ? 'Сохранение…' : 'Добавить поступление'}
+                <div className="sell-total">
+                  К добавлению:{' '}
+                  {shipmentCount}{' '}
+                  шт.
+                </div>
+
+                <button
+                  onClick={
+                    addShipmentAll
+                  }
+                  disabled={
+                    shipmentCount ===
+                      0 ||
+                    drinkActionBusy
+                  }
+                >
+                  {drinkActionBusy
+                    ? 'Сохранение…'
+                    : 'Добавить поступление'}
                 </button>
               </div>
             </div>
 
-            {/* Продажа */}
-            <div className={`form-block panel ${showSale ? '' : 'collapsed'}`}>
-              <div className="panel-head" onClick={() => setShowSale((v) => !v)}>
+            <div
+              className={
+                `form-block panel ${
+                  showSale
+                    ? ''
+                    : 'collapsed'
+                }`
+              }
+            >
+              <div
+                className="panel-head"
+                onClick={() =>
+                  setShowSale(
+                    (value) =>
+                      !value
+                  )
+                }
+              >
                 <h4>Продажа</h4>
-                <button type="button" className="panel-toggle">{showSale ? 'Свернуть' : 'Открыть'}</button>
+
+                <button
+                  type="button"
+                  className="panel-toggle"
+                >
+                  {showSale
+                    ? 'Свернуть'
+                    : 'Открыть'}
+                </button>
               </div>
 
               <div className="panel-body">
                 <ul className="drinks-list">
-                  {DRINK_KEYS.map((sku) => {
-                    const d = DRINKS[sku];
-                    const stock = Number(drinkStock?.[sku] || 0);
-                    const qty = saleCart[sku] || 0;
-                    const over = qty > stock;
+                  {DRINK_KEYS.map(
+                    (sku) => {
+                      const drink =
+                        DRINKS[sku];
 
-                    return (
-                      <li
-                        key={sku}
-                        className={`drink-row ${qty > 0 ? 'selected' : ''}`}
-                        onClick={() => incCart(setSaleCart)(sku, 1)}
-                      >
-                        <span className="drink-name">{d.name}</span>
-                        <span className="drink-price">{d.price} MDL</span>
-                        <span className="drink-stock">На складе: {stock}</span>
+                      const stock =
+                        Number(
+                          drinkStock?.[
+                            sku
+                          ] || 0
+                        );
 
-                        <div className="qty-controls" onClick={(e) => e.stopPropagation()}>
-                          <button className='qty-controls-button' onClick={() => decCart(setSaleCart)(sku, 1)}>-</button>
-                          <input
-                            type="number"
-                            min={0}
-                            value={qty}
-                            onChange={(e) => setCartQty(setSaleCart)(sku, e.target.value)}
-                          />
-                          <button className='qty-controls-button' onClick={() => incCart(setSaleCart)(sku, 1)}>+</button>
-                        </div>
+                      const quantity =
+                        saleCart[
+                          sku
+                        ] || 0;
 
-                        {over && <small className="stock-info">Недостаточно на складе</small>}
-                      </li>
-                    );
-                  })}
+                      const insufficient =
+                        quantity >
+                        stock;
+
+                      return (
+                        <li
+                          key={sku}
+                          className={
+                            `drink-row ${
+                              quantity >
+                              0
+                                ? 'selected'
+                                : ''
+                            }`
+                          }
+                        >
+                          <span className="drink-name">
+                            {drink.name}
+                          </span>
+
+                          <span className="drink-price">
+                            {drink.price}{' '}
+                            MDL
+                          </span>
+
+                          <span className="drink-stock">
+                            На складе:{' '}
+                            {stock}
+                          </span>
+
+                          <div className="qty-controls">
+                            <button
+                              type="button"
+                              className="qty-controls-button"
+                              onClick={() =>
+                                decrementCart(
+                                  setSaleCart
+                                )(
+                                  sku,
+                                  1
+                                )
+                              }
+                            >
+                              −
+                            </button>
+
+                            <input
+                              type="number"
+                              min={0}
+                              value={
+                                quantity
+                              }
+                              onChange={(
+                                event
+                              ) =>
+                                setCartQty(
+                                  setSaleCart
+                                )(
+                                  sku,
+                                  event
+                                    .target
+                                    .value
+                                )
+                              }
+                            />
+
+                            <button
+                              type="button"
+                              className="qty-controls-button"
+                              onClick={() =>
+                                incrementCart(
+                                  setSaleCart
+                                )(
+                                  sku,
+                                  1
+                                )
+                              }
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          {insufficient && (
+                            <small className="stock-info">
+                              Недостаточно
+                              на складе
+                            </small>
+                          )}
+                        </li>
+                      );
+                    }
+                  )}
                 </ul>
 
-                <div className="sell-total">К оплате: {saleTotal.toFixed(2)} MDL</div>
+                <div className="sell-total">
+                  К оплате:{' '}
+                  {saleTotal.toFixed(
+                    2
+                  )}{' '}
+                  MDL
+                </div>
+
+                {saleCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSaleCart({})
+                    }
+                    disabled={
+                      drinkActionBusy
+                    }
+                  >
+                    Очистить выбранное
+                  </button>
+                )}
+
                 <button
                   onClick={sellAll}
-                  disabled={saleCount === 0 || saleInsufficient || drinkActionBusy}
-                  title={saleInsufficient ? 'Недостаточно на складе' : undefined}
+                  disabled={
+                    saleCount === 0 ||
+                    saleInsufficient ||
+                    drinkActionBusy
+                  }
+                  title={
+                    saleInsufficient
+                      ? 'Недостаточно на складе'
+                      : undefined
+                  }
                 >
-                  {drinkActionBusy ? 'Сохранение…' : 'Продать выбранное'}
+                  {drinkActionBusy
+                    ? 'Сохранение…'
+                    : 'Продать выбранное'}
                 </button>
               </div>
             </div>
           </div>
 
-          {uiMsg && <div className="ui-msg">{uiMsg}</div>}
+          {uiMsg && (
+            <div className="ui-msg">
+              {uiMsg}
+            </div>
+          )}
         </div>
       </div>
     </div>
