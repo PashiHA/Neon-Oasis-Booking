@@ -7,6 +7,7 @@ import React, {
 } from "react";
 
 import styles from "./GamesCatalog.module.css";
+import emptyCover from "../img/billiard.png";
 
 /* =========================================================
    НАСТРОЙКИ
@@ -1120,21 +1121,15 @@ function MiniCard({ item }) {
       <div
         className={styles.miniImg}
       >
-        {item.imageUrl ? (
-          <img
-            src={item.imageUrl}
+        <img
+            src={item.imageUrl || emptyCover}
             alt={item.title}
             loading="lazy"
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = emptyCover;
+            }}
           />
-        ) : (
-          <div
-            className={
-              styles.imgPlaceholder
-            }
-          >
-            🎮
-          </div>
-        )}
       </div>
 
       <div
@@ -1624,27 +1619,63 @@ export default function GamesCatalog() {
                 styles.modalCard
               }
             >
-              <div
-                className={
-                  styles.modalImg
-                }
-              >
-                {game.imageUrl ? (
+              {game.trailerUrl &&
+              game.trailerUrl !== "#" ? (
+                <a
+                  className={
+                    styles.modalImg
+                  }
+                  href={
+                    game.trailerUrl
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Открыть страницу игры ${game.title}`}
+                  style={{
+                    display: "block",
+                    cursor: "pointer",
+                    textDecoration: "none",
+                  }}
+                >
                   <img
-                    src={game.imageUrl}
+                    src={
+                      game.imageUrl ||
+                      emptyCover
+                    }
                     alt={game.title}
                     loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.onerror =
+                        null;
+
+                      event.currentTarget.src =
+                        emptyCover;
+                    }}
                   />
-                ) : (
-                  <div
-                    className={
-                      styles.imgPlaceholderBig
+                </a>
+              ) : (
+                <div
+                  className={
+                    styles.modalImg
+                  }
+                >
+                  <img
+                    src={
+                      game.imageUrl ||
+                      emptyCover
                     }
-                  >
-                    🎮
-                  </div>
-                )}
-              </div>
+                    alt={game.title}
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.onerror =
+                        null;
+
+                      event.currentTarget.src =
+                        emptyCover;
+                    }}
+                  />
+                </div>
+              )}
 
               <div
                 className={

@@ -26,24 +26,6 @@ const INITIAL_STATUSES = {
   autosim2: { status: 'Свободно', until: null }
 };
 
-const DRINKS = {
-  cola_05: { name: 'Coca-Cola 0.5 l', price: 17 },
-  fanta_05: { name: 'Fanta 0.5 l', price: 17 },
-  sprite_05: { name: 'Sprite 0.5 l', price: 17 },
-  schweppes_033: { name: 'Schweppes 0.33 l', price: 16 },
-  dorna_05: { name: 'Dorna 0.5 l', price: 14 },
-  frunzea_05: { name: 'Ceai Frunzea 0.5 l', price: 21 },
-  cappy_02: { name: 'Cappy 0.2 l', price: 13 },
-  monster_05: { name: 'Monster 0.5 l', price: 31 },
-  burn_0250: { name: 'Burn 0.25 l', price: 25 },
-  cola_033: { name: 'Coca-Cola 0.33 l', price: 13 },
-  fanta_033: { name: 'Fanta 0.33 l', price: 13 },
-  sprite_033: { name: 'Sprite 0.33 l', price: 13 },
-  redbull_025: { name: 'Red Bull 0.25 l', price: 26 }
-};
-
-const DRINK_KEYS = Object.keys(DRINKS);
-
 const getLocalDayKeyFromTs = (ts) => {
   const date = new Date(ts);
   const year = date.getFullYear();
@@ -88,6 +70,30 @@ const isCancelledBooking = (booking) => {
 };
 
 export default function Admin() {
+  const DRINKS = useMemo(
+    () => ({
+      cola_05: { name: 'Coca-Cola 0.5 l', price: 17 },
+      fanta_05: { name: 'Fanta 0.5 l', price: 17 },
+      sprite_05: { name: 'Sprite 0.5 l', price: 17 },
+      schweppes_033: { name: 'Schweppes 0.33 l', price: 16 },
+      dorna_05: { name: 'Dorna 0.5 l', price: 14 },
+      frunzea_05: { name: 'Ceai Frunzea 0.5 l', price: 21 },
+      cappy_02: { name: 'Cappy 0.2 l', price: 13 },
+      monster_05: { name: 'Monster 0.5 l', price: 31 },
+      burn_0250: { name: 'Burn 0.25 l', price: 25 },
+      cola_033: { name: 'Coca-Cola 0.33 l', price: 13 },
+      fanta_033: { name: 'Fanta 0.33 l', price: 13 },
+      sprite_033: { name: 'Sprite 0.33 l', price: 13 },
+      redbull_025: { name: 'Red Bull 0.25 l', price: 26 }
+    }),
+    []
+  );
+
+  const DRINK_KEYS = useMemo(
+    () => Object.keys(DRINKS),
+    [DRINKS]
+  );
+
   const [statuses, setStatuses] =
     useState(INITIAL_STATUSES);
 
@@ -123,6 +129,9 @@ export default function Admin() {
 
   const [saleCart, setSaleCart] =
     useState({});
+
+  const [todaySales, setTodaySales] =
+    useState([]);
 
   const [uiMsg, setUiMsg] =
     useState('');
@@ -410,6 +419,31 @@ export default function Admin() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const salesRef = ref(
+      db,
+      `sales/${todayKey}/drinks`
+    );
+
+    const unsubscribe = onValue(
+      salesRef,
+      (snapshot) => {
+        const data =
+          snapshot.val() || {};
+
+        setTodaySales(
+          Object.values(data).sort(
+            (first, second) =>
+              Number(second.timestamp || 0) -
+              Number(first.timestamp || 0)
+          )
+        );
+      }
+    );
+
+    return () => unsubscribe();
+  }, [todayKey]);
 
   const newId = () => {
     if (
@@ -702,6 +736,94 @@ export default function Admin() {
       setMinutes(30);
     };
 
+  const extendBooking =
+    async () => {
+      if (!selectedItem) {
+        return;
+      }
+
+      const totalMs =
+        (Number(hours) || 0) *
+          3_600_000 +
+        (Number(minutes) || 0) *
+          60_000;
+
+      if (totalMs <= 0) {
+        setUiMsg(
+          'Укажите время, которое нужно добавить.'
+        );
+        return;
+      }
+
+      const item = selectedItem;
+
+      try {
+        const result = await runTransaction(
+          ref(db, `statuses/${item}`),
+          (currentValue) => {
+            const current =
+              currentValue || {};
+
+            if (
+              current.status !==
+              'Занято'
+            ) {
+              return;
+            }
+
+            const baseUntil = Math.max(
+              Number(current.until || 0),
+              serverNow()
+            );
+
+            return {
+              ...current,
+              until: baseUntil + totalMs,
+              updatedBy: 'admin',
+              reason: 'manual-extension',
+              updatedAt: serverTimestamp()
+            };
+          }
+        );
+
+        if (!result?.committed) {
+          setUiMsg(
+            'Время не добавлено: зона уже освободилась.'
+          );
+          return;
+        }
+
+        const category =
+          serviceCategory(item);
+
+        await runTransaction(
+          ref(
+            db,
+            `dailyStats/${todayKey}/${category}`
+          ),
+          (currentValue) =>
+            (Number(currentValue) || 0) +
+            totalMs
+        );
+
+        await addLog(
+          `Добавлено время ${item}: ${hours} ч ${minutes} мин`
+        );
+
+        setUiMsg(
+          `Для ${item.toUpperCase()} добавлено: ${hours} ч ${minutes} мин.`
+        );
+        setSelectedItem(null);
+        setHours(0);
+        setMinutes(30);
+      } catch (error) {
+        console.error(error);
+        setUiMsg(
+          `Не удалось добавить время: ${firebaseErrorText(error)}`
+        );
+      }
+    };
+
   const setCartQty =
     (setter) =>
     (sku, value) => {
@@ -862,6 +984,18 @@ export default function Admin() {
       let stockCommitted = false;
       let stockAfter = {};
 
+      if (
+        type !== 'sale' &&
+        type !== 'shipment'
+      ) {
+        return {
+          ok: false,
+          operationId,
+          errorText:
+            'Неизвестный тип операции'
+        };
+      }
+
       try {
         /*
          * Транзакция выполняется только
@@ -872,11 +1006,32 @@ export default function Admin() {
          */
         const result =
           await runTransaction(
-            ref(
-              db,
-              'drinks/stock'
-            ),
-            (stockValue) => {
+            ref(db, 'drinks'),
+            (drinksValue) => {
+              const drinks =
+                drinksValue &&
+                typeof drinksValue ===
+                  'object'
+                  ? { ...drinksValue }
+                  : {};
+
+              const existingOperations =
+                drinks.operations &&
+                typeof drinks.operations ===
+                  'object'
+                  ? { ...drinks.operations }
+                  : {};
+
+              if (
+                existingOperations[
+                  operationId
+                ]
+              ) {
+                return drinks;
+              }
+
+              const stockValue =
+                drinks.stock;
               const stock =
                 stockValue &&
                 typeof stockValue ===
@@ -937,7 +1092,32 @@ export default function Admin() {
                 stock[sku] = next;
               }
 
-              return stock;
+              const operation = {
+                id: operationId,
+                type,
+                timestamp,
+                dayKey,
+                totalSum: Number(
+                  totalSum || 0
+                ),
+                items: Object.fromEntries(
+                  entries.map(
+                    ([sku, quantity]) => [
+                      sku,
+                      Number(quantity)
+                    ]
+                  )
+                )
+              };
+
+              drinks.stock = stock;
+              existingOperations[
+                operationId
+              ] = operation;
+              drinks.operations =
+                existingOperations;
+
+              return drinks;
             }
           );
 
@@ -951,48 +1131,15 @@ export default function Admin() {
 
             stock:
               result?.snapshot
-                ?.val() || {}
+                ?.val()?.stock || {}
           };
         }
 
         stockAfter =
-          result.snapshot.val() ||
-          {};
+          result.snapshot.val()
+            ?.stock || {};
 
         stockCommitted = true;
-
-        const operation = {
-          id: operationId,
-          type,
-          timestamp,
-          dayKey,
-
-          totalSum:
-            Number(
-              totalSum || 0
-            ),
-
-          items:
-            Object.fromEntries(
-              entries.map(
-                ([
-                  sku,
-                  quantity
-                ]) => [
-                  sku,
-                  Number(quantity)
-                ]
-              )
-            )
-        };
-
-        await set(
-          ref(
-            db,
-            `drinks/operations/${operationId}`
-          ),
-          operation
-        );
 
         if (type === 'sale') {
           for (
@@ -1560,6 +1707,48 @@ export default function Admin() {
             ).toFixed(2)}{' '}
             MDL
           </p>
+
+          <div className="sales-history">
+            <strong>
+              Продажи напитков сегодня:
+            </strong>
+
+            {todaySales.length === 0 ? (
+              <p>Продаж пока нет</p>
+            ) : (
+              <ul>
+                {todaySales.map(
+                  (sale, index) => (
+                    <li
+                      key={
+                        `${sale.operationId || 'sale'}-${sale.sku || index}`
+                      }
+                    >
+                      {new Date(
+                        Number(
+                          sale.timestamp || 0
+                        )
+                      ).toLocaleTimeString(
+                        [],
+                        {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }
+                      )}{' '}
+                      — {sale.name}{' '}
+                      × {Number(
+                        sale.quantity ||
+                          sale.qty || 0
+                      )}{' '}
+                      — {Number(
+                        sale.total || 0
+                      ).toFixed(2)} MDL
+                    </li>
+                  )
+                )}
+              </ul>
+            )}
+          </div>
         </div>
 
         <CalendarBookings
@@ -1632,6 +1821,59 @@ export default function Admin() {
                     ].until
                   ).toLocaleTimeString()}
                 </h3>
+
+                <label>
+                  Добавить часов:{' '}
+                  <input
+                    type="number"
+                    value={hours}
+                    min={0}
+                    max={12}
+                    onChange={(event) =>
+                      setHours(
+                        Math.max(
+                          0,
+                          Math.min(
+                            12,
+                            Number(
+                              event.target.value
+                            )
+                          )
+                        )
+                      )
+                    }
+                  />
+                </label>
+
+                <label>
+                  Добавить минут:{' '}
+                  <input
+                    type="number"
+                    value={minutes}
+                    min={0}
+                    max={59}
+                    step={15}
+                    onChange={(event) =>
+                      setMinutes(
+                        Math.max(
+                          0,
+                          Math.min(
+                            59,
+                            Number(
+                              event.target.value
+                            )
+                          )
+                        )
+                      )
+                    }
+                  />
+                </label>
+
+                <button
+                  onClick={extendBooking}
+                >
+                  Добавить время
+                </button>
 
                 <button
                   onClick={
