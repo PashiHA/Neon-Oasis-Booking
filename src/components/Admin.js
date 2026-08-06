@@ -983,6 +983,7 @@ export default function Admin() {
 
       let stockCommitted = false;
       let stockAfter = {};
+      let abortReason = '';
 
       if (
         type !== 'sale' &&
@@ -1006,32 +1007,8 @@ export default function Admin() {
          */
         const result =
           await runTransaction(
-            ref(db, 'drinks'),
-            (drinksValue) => {
-              const drinks =
-                drinksValue &&
-                typeof drinksValue ===
-                  'object'
-                  ? { ...drinksValue }
-                  : {};
-
-              const existingOperations =
-                drinks.operations &&
-                typeof drinks.operations ===
-                  'object'
-                  ? { ...drinks.operations }
-                  : {};
-
-              if (
-                existingOperations[
-                  operationId
-                ]
-              ) {
-                return drinks;
-              }
-
-              const stockValue =
-                drinks.stock;
+            ref(db, 'drinks/stock'),
+            (stockValue) => {
               const stock =
                 stockValue &&
                 typeof stockValue ===
@@ -1061,6 +1038,8 @@ export default function Admin() {
                   ) ||
                   quantity <= 0
                 ) {
+                  abortReason =
+                    'invalid-quantity';
                   return;
                 }
 
@@ -1075,6 +1054,8 @@ export default function Admin() {
                   ) ||
                   current < 0
                 ) {
+                  abortReason =
+                    'invalid-stock';
                   return;
                 }
 
@@ -1086,38 +1067,15 @@ export default function Admin() {
                       quantity;
 
                 if (next < 0) {
+                  abortReason =
+                    'insufficient-stock';
                   return;
                 }
 
                 stock[sku] = next;
               }
 
-              const operation = {
-                id: operationId,
-                type,
-                timestamp,
-                dayKey,
-                totalSum: Number(
-                  totalSum || 0
-                ),
-                items: Object.fromEntries(
-                  entries.map(
-                    ([sku, quantity]) => [
-                      sku,
-                      Number(quantity)
-                    ]
-                  )
-                )
-              };
-
-              drinks.stock = stock;
-              existingOperations[
-                operationId
-              ] = operation;
-              drinks.operations =
-                existingOperations;
-
-              return drinks;
+              return stock;
             }
           );
 
@@ -1125,21 +1083,45 @@ export default function Admin() {
           return {
             ok: false,
             reason:
-              'insufficient-stock',
+              abortReason ||
+              'transaction-aborted',
 
             operationId,
 
             stock:
               result?.snapshot
-                ?.val()?.stock || {}
+                ?.val() || {}
           };
         }
 
         stockAfter =
-          result.snapshot.val()
-            ?.stock || {};
+          result.snapshot.val() || {};
 
         stockCommitted = true;
+
+        await set(
+          ref(
+            db,
+            `drinks/operations/${operationId}`
+          ),
+          {
+            id: operationId,
+            type,
+            timestamp,
+            dayKey,
+            totalSum: Number(
+              totalSum || 0
+            ),
+            items: Object.fromEntries(
+              entries.map(
+                ([sku, quantity]) => [
+                  sku,
+                  Number(quantity)
+                ]
+              )
+            )
+          }
+        );
 
         if (type === 'sale') {
           for (
