@@ -72,14 +72,14 @@ const isCancelledBooking = (booking) => {
 export default function Admin() {
   const DRINKS = useMemo(
     () => ({
-      cola_05: { name: 'Coca-Cola 0.5 l', price: 17 },
-      fanta_05: { name: 'Fanta 0.5 l', price: 17 },
-      sprite_05: { name: 'Sprite 0.5 l', price: 17 },
+      cola_05: { name: 'Coca-Cola 0.5 l', price: 18 },
+      fanta_05: { name: 'Fanta 0.5 l', price: 18 },
+      sprite_05: { name: 'Sprite 0.5 l', price: 18 },
       schweppes_033: { name: 'Schweppes 0.33 l', price: 16 },
       dorna_05: { name: 'Dorna 0.5 l', price: 14 },
       frunzea_05: { name: 'Ceai Frunzea 0.5 l', price: 21 },
       cappy_02: { name: 'Cappy 0.2 l', price: 13 },
-      monster_05: { name: 'Monster 0.5 l', price: 31 },
+      monster_05: { name: 'Monster 0.5 l', price: 32 },
       burn_0250: { name: 'Burn 0.25 l', price: 25 },
       cola_033: { name: 'Coca-Cola 0.33 l', price: 13 },
       fanta_033: { name: 'Fanta 0.33 l', price: 13 },
