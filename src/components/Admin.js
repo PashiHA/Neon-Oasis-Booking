@@ -81,9 +81,9 @@ export default function Admin() {
       cappy_02: { name: 'Cappy 0.2 l', price: 13 },
       monster_05: { name: 'Monster 0.5 l', price: 32 },
       burn_0250: { name: 'Burn 0.25 l', price: 25 },
-      cola_033: { name: 'Coca-Cola 0.33 l', price: 13 },
-      fanta_033: { name: 'Fanta 0.33 l', price: 13 },
-      sprite_033: { name: 'Sprite 0.33 l', price: 13 },
+      cola_033: { name: 'Coca-Cola 0.33 l', price: 15 },
+      fanta_033: { name: 'Fanta 0.33 l', price: 15 },
+      sprite_033: { name: 'Sprite 0.33 l', price: 15 },
       redbull_025: { name: 'Red Bull 0.25 l', price: 26 }
     }),
     []
